@@ -1,6 +1,16 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'Module':'Модуль',
+  'Warehouse Register':'Реестр склада',
+  'Project Register':'Реестр проектов',
+  'Roles':'Роли',
+  'User roles':'Роли пользователя',
+  'Select at least one role.':'Выберите хотя бы одну роль.',
+  'No access to Warehouse Register':'Нет доступа к Реестру склада',
+  'Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.':'Вы вошли в корпоративную учётную запись, но у вас нет прав доступа к Реестру склада.',
+  'Back to Project Register':'Вернуться в Реестр проектов',
+  '← Back to Project Register':'← Вернуться в Реестр проектов',
   'Access will open after the official warehouse inventory cutover is approved.':'Доступ откроется после согласования исходных складских остатков и запуска рабочей версии.',
   'HH Warehouse Register · Official edition · All times displayed in local time':'HH Warehouse Register · Официальная версия · Время указано местное',
   'PRODUCTION':'РАБОЧАЯ ВЕРСИЯ',
