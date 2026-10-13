@@ -98,3 +98,28 @@ main{max-width:none;padding:0}
 .module-access-denied .button{margin-top:5px}
 @media(max-width:950px){.shell{padding:0 16px 30px}.overview{flex-direction:column;align-items:stretch}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.top-brand strong{font-size:25px}}
 @media(max-width:620px){.shell{padding:0 13px 20px}.topbar{gap:12px}.top-brand strong{font-size:20px}.overview{padding:20px}.fields{grid-template-columns:1fr}.module-switch select{min-width:150px}.hh-logo.header-logo{height:45px;width:34px}}
+
+/* HH shared login/header v2 — identical proportions across registers. */
+.login-card{width:min(470px,100%);padding:42px;border:1px solid #e4ded5;border-radius:18px;background:#fff;box-shadow:0 14px 40px rgba(60,43,30,.1)}
+.landing{background:radial-gradient(ellipse at 20% 0%,#e7ddd1,transparent 55%),#f2efea}
+.login-topline{align-items:flex-start;gap:12px;margin-bottom:25px}
+.login-topline .eyebrow{font-size:10px;line-height:1.5;color:#a3896c;letter-spacing:2px;max-width:255px}
+.brand-lockup{margin:25px 0;gap:15px}
+.brand-lockup h1{font-size:30px;letter-spacing:-.04em;color:#15232d}
+.login-card p{font-size:13px;line-height:1.55}
+.login-actions{gap:10px;margin:10px 0 20px}
+.login-actions>.button{min-height:38px}
+.login-card>small{font-size:11px;color:#9b8b7d}
+.hh-module-button{background:#fff;color:#463b31;min-height:38px;border:1px solid #d7cabe;font-weight:700;box-shadow:0 1px 1px rgba(0,0,0,.02);white-space:nowrap}
+.hh-module-button:hover:not(:disabled){background:#f1e9df}
+.hh-module-button span[aria-hidden]{margin-left:4px}
+.hh-module-loading{display:none;min-height:100vh;place-items:center;padding:24px;background:radial-gradient(ellipse at 20% 0%,#e7ddd1,transparent 55%),#f2efea}
+html[data-module-sso="pending"] .landing{display:none}
+html[data-module-sso="pending"] .hh-module-loading{display:grid}
+.hh-module-loading-card{text-align:center;background:#fff;border:1px solid #e4ded5;border-radius:18px;box-shadow:0 14px 40px rgba(60,43,30,.1);width:min(420px,100%);padding:35px 28px}
+.hh-module-loading-card>.hh-logo{height:66px;width:50px;margin:0 auto 18px}
+.hh-module-loading-title{font-size:19px;font-weight:800;color:#15232d}
+.hh-module-loading-card p{font-size:12px;color:#73675c;line-height:1.5;margin:14px 0 0}
+.hh-module-loading-spinner{margin:22px auto 0;width:28px;height:28px;border:3px solid #e8ddd1;border-top-color:#7a5a3a;border-radius:50%;animation:hh-sso-spin .8s linear infinite}
+@keyframes hh-sso-spin{to{transform:rotate(360deg)}}
+@media(max-width:630px){.login-card{padding:25px}.login-topline{margin-bottom:18px}.brand-lockup h1{font-size:23px}}
