@@ -1,6 +1,10 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'Calculating rental charges…':'Расчёт стоимости аренды…',
+  'Choose a project and closing date.':'Выберите проект и дату закрытия.',
+  'Monthly closing preview':'Предварительный расчёт закрытия месяца',
+  'rentals':'аренд',
   'Reports':'Отчёты',
   'Stock balances and billed rental periods, with export to CSV.':'Отчёты по остаткам и начислениям аренды с выгрузкой в CSV.',
   'Report type':'Тип отчёта',
