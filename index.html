@@ -12,57 +12,57 @@
 <body>
  <section id="landing" class="landing">
   <div class="login-card">
-   <div class="eyebrow">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div>
+   <div class="login-topline"><div class="eyebrow" data-i18n="HELSINGIN HITSAUS · WAREHOUSE CONTROL">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div><label class="language-control" for="login-language-select"><span data-i18n="Language">Language</span><select id="login-language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label></div>
    <div class="brand-lockup"><span class="logo-mark">H</span><h1>Warehouse Register</h1></div>
-   <p>Inventory, materials, tools, project assignments and rentals in one workspace.</p>
-   <div id="login-status" class="muted">Enter the warehouse test access code to view the imported Excel data.</div>
+   <p data-i18n="Inventory, materials, tools, project assignments and rentals in one workspace.">Inventory, materials, tools, project assignments and rentals in one workspace.</p>
+   <div id="login-status" class="muted" data-i18n="Enter the warehouse test access code to view the imported Excel data.">Enter the warehouse test access code to view the imported Excel data.</div>
    <div class="login-actions">
-    <label class="field"><span>Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" /></label>
-    <button class="button primary" id="login-microsoft">Open test warehouse</button>
-    <button class="button outline hidden" id="login-demo" disabled>Demo disabled</button>
+    <label class="field"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
+    <button class="button primary" id="login-microsoft" data-i18n="Open test warehouse">Open test warehouse</button>
+    <button class="button outline hidden" id="login-demo" disabled data-i18n="Demo disabled">Demo disabled</button>
    </div>
-   <small class="muted">This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.</small>
+   <small class="muted" data-i18n="This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.">This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.</small>
   </div>
  </section>
  <div id="shell" class="shell hidden">
   <header class="topbar">
    <div class="top-brand"><span class="logo-mark small">H</span><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
-   <div class="top-actions"><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><button class="button outline compact" id="logout">Sign out</button></div>
+   <div class="top-actions"><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
   </header>
   <main>
    <section class="overview">
-    <div><div class="eyebrow">WAREHOUSE CONTROL</div><h2 id="view-title">Dashboard</h2><p id="view-description">Inventory and project supply overview.</p></div>
+    <div><div class="eyebrow" data-i18n="WAREHOUSE CONTROL">WAREHOUSE CONTROL</div><h2 id="view-title">Dashboard</h2><p id="view-description">Inventory and project supply overview.</p></div>
     <div id="summary" class="stats"></div>
    </section>
-   <div id="demo-warning" class="demo-warning hidden"><strong>TEST COPY:</strong> real Excel records are loaded. New edits in this preview are temporary and may reset after a server restart. Do not treat the preview as the official stock register.</div>
-   <nav id="tabs" class="tabs" aria-label="Warehouse sections">
-    <button data-view="dashboard" class="tab active">Dashboard</button>
-    <button data-view="inventory" class="tab">Inventory</button>
-    <button data-view="receipts" class="tab">Stock Receipts</button>
-    <button data-view="issues" class="tab">Issued Materials</button>
-    <button data-view="rentals" class="tab">Rentals</button>
-    <button data-view="projects" class="tab">Projects</button>
-    <button data-view="employees" class="tab">Employees</button>
-    <button data-view="warehouse-history" class="tab">Warehouse History</button>
-    <button data-view="history" class="tab">Change History</button>
-    <button data-view="system" class="tab admin-only">System messages <span id="unread-count" class="count hidden">0</span></button>
+   <div id="demo-warning" class="demo-warning hidden"><strong data-i18n="TEST COPY:">TEST COPY:</strong> <span data-i18n="real Excel records are loaded. New edits in this preview are temporary and may reset after a server restart. Do not treat the preview as the official stock register.">real Excel records are loaded. New edits in this preview are temporary and may reset after a server restart. Do not treat the preview as the official stock register.</span></div>
+   <nav id="tabs" class="tabs" aria-label="Warehouse sections" data-i18n-aria-label="Warehouse sections">
+    <button data-view="dashboard" class="tab active" data-i18n="Dashboard">Dashboard</button>
+    <button data-view="inventory" class="tab" data-i18n="Inventory">Inventory</button>
+    <button data-view="receipts" class="tab" data-i18n="Stock Receipts">Stock Receipts</button>
+    <button data-view="issues" class="tab" data-i18n="Issued Materials">Issued Materials</button>
+    <button data-view="rentals" class="tab" data-i18n="Rentals">Rentals</button>
+    <button data-view="projects" class="tab" data-i18n="Projects">Projects</button>
+    <button data-view="employees" class="tab" data-i18n="Employees">Employees</button>
+    <button data-view="warehouse-history" class="tab" data-i18n="Warehouse History">Warehouse History</button>
+    <button data-view="history" class="tab" data-i18n="Change History">Change History</button>
+    <button data-view="system" class="tab admin-only"><span data-i18n="System messages">System messages</span> <span id="unread-count" class="count hidden">0</span></button>
    </nav>
    <section class="workspace">
     <div class="toolbar">
      <div id="primary-actions" class="action-group"></div>
      <div class="table-tools">
-      <label class="searchbox"><span>Search</span><input id="search" type="search" placeholder="SKU, name, project, employee…"/></label>
-      <button id="reset-width" class="icon-button" title="Reset column widths">↔</button>
-      <button id="zoom-out" class="icon-button" title="Zoom out">−</button>
-      <button id="zoom-value" class="icon-button" title="Reset zoom">100%</button>
-      <button id="zoom-in" class="icon-button" title="Zoom in">+</button>
-      <button id="fullscreen" class="icon-button" title="Fullscreen table">⛶</button>
+      <label class="searchbox"><span data-i18n="Search">Search</span><input id="search" type="search" placeholder="SKU, name, project, employee…" data-i18n-placeholder="SKU, name, project, employee…"/></label>
+      <button id="reset-width" class="icon-button" title="Reset column widths" data-i18n-title="Reset column widths">↔</button>
+      <button id="zoom-out" class="icon-button" title="Zoom out" data-i18n-title="Zoom out">−</button>
+      <button id="zoom-value" class="icon-button" title="Reset zoom" data-i18n-title="Reset zoom">100%</button>
+      <button id="zoom-in" class="icon-button" title="Zoom in" data-i18n-title="Zoom in">+</button>
+      <button id="fullscreen" class="icon-button" title="Fullscreen table" data-i18n-title="Fullscreen table">⛶</button>
      </div>
     </div>
     <div id="page-content" class="content"></div>
    </section>
   </main>
-  <footer>HH Warehouse Register · Test Version 0.1 · All times displayed in local time</footer>
+  <footer data-i18n="HH Warehouse Register · Test Version 0.1 · All times displayed in local time">HH Warehouse Register · Test Version 0.1 · All times displayed in local time</footer>
  </div>
  <div id="modal-host"></div><div id="toast" class="toast hidden" role="status"></div>
  <script type="module" src="/src/main.js"></script>
