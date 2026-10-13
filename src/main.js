@@ -44,10 +44,7 @@ function chooseLanguage(language){
  }:null;
  setLanguage(language);
  refreshStaticLanguage();
- if(state.user){
-  $('#mode-label').textContent=tx(state.demo?'DEMO':cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');
-  render();
- }
+ if(state.user)render();
  if(snapshot){
   modal(snapshot.type,snapshot.record);
   const fresh=$('#record-form');
@@ -85,7 +82,7 @@ const pages={
  system:['System messages','Administrative messages and operational warnings.']
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
-const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
+const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],onlineUsers:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -226,15 +223,20 @@ async function connect(){
  // The authenticated API helper acquires the token; do not repeat the same
  // token acquisition before the large inventory bootstrap.
  const data=await api('/api/bootstrap');
- if(data.user.role==='admin'){
-   try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
- }
+ const isAdmin=data.user.role==='admin';
+ if(isAdmin)data.messages=[];
  state.user=data.user;state.data=data;state.demo=false;
  document.documentElement.removeAttribute('data-module-sso');
  $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');
  void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
- $('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ $('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
+ // Don't hold the entire dashboard behind the second GitHub request
+ // needed to fetch administrator system messages.
+ if(isAdmin)void api('/api/system-messages').then(result=>{
+  if(state.user===data.user && !state.demo){state.data.messages=result.messages||[];render();}
+ }).catch(()=>{});
+ void refreshWarehousePresence();
 }
 async function api(path,body,method='GET'){
  const token=state.microsoftSession?(await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken:state.token;
@@ -243,10 +245,46 @@ async function api(path,body,method='GET'){
  if(!response.ok){const error=new Error(data.error||'Operation failed');error.status=response.status;throw error;}
  return data;
 }
+function renderWarehousePresence(){
+ const el=$('#warehouseOnlineUsers');
+ if(!el)return;
+ const online=state.user&&!state.demo?state.onlineUsers:[];
+ el.classList.toggle('hidden',!online.length);
+ el.replaceChildren();
+ el.title=online.join(', ');
+ const compact=window.matchMedia('(max-width: 620px)').matches;
+ for(const name of (compact?online.slice(0,1):online)){
+  const badge=document.createElement('span');
+  badge.className='online-peer';
+  badge.textContent=name;
+  badge.title=name;
+  el.append(badge);
+ }
+ if(compact&&online.length>1){
+  const more=document.createElement('span');
+  more.className='online-peer online-peer-count';
+  more.textContent='+'+(online.length-1);
+  more.title=online.slice(1).join(', ');
+  el.append(more);
+ }
+}
+let warehousePresenceBusy=false;
+async function refreshWarehousePresence(){
+ if(!state.user||state.demo||warehousePresenceBusy||document.visibilityState==='hidden')return;
+ warehousePresenceBusy=true;
+ try{
+  const response=await api('/api/presence',null,'POST');
+  if(state.user){
+   state.onlineUsers=[...new Set((response.others||[]).filter(x=>typeof x==='string'&&x.trim()))];
+   renderWarehousePresence();
+  }
+ }catch(error){console.warn('Warehouse presence unavailable:',error.message);}
+ finally{warehousePresenceBusy=false;}
+}
 async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}if(state.view==='users')await loadMembers();}render();}
 function beginDemo(){
  state.demo=true;state.user={email:'Demo administrator',role:'admin'};state.data=fakeData();
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx('DEMO');$('#mode-label').className='tag';$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
  render();
 }
 function cols(){
@@ -800,4 +838,7 @@ $('#page-content').addEventListener('pointerdown',e=>{
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
 });
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+window.setInterval(()=>{void refreshWarehousePresence();},30000);
+window.addEventListener('resize',renderWarehousePresence);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void refreshWarehousePresence();});
 initMicrosoft().catch(e=>{document.documentElement.removeAttribute('data-module-sso');setLoginStatus('Microsoft sign-in not ready: '+e.message);});

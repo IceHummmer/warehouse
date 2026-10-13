@@ -123,3 +123,30 @@ html[data-module-sso="pending"] .hh-module-loading{display:grid}
 .hh-module-loading-spinner{margin:22px auto 0;width:28px;height:28px;border:3px solid #e8ddd1;border-top-color:#7a5a3a;border-radius:50%;animation:hh-sso-spin .8s linear infinite}
 @keyframes hh-sso-spin{to{transform:rotate(360deg)}}
 @media(max-width:630px){.login-card{padding:25px}.login-topline{margin-bottom:18px}.brand-lockup h1{font-size:23px}}
+
+
+/* Live Warehouse presence appears before the module button, not a Production badge. */
+.hh-module-controls{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(48vw,540px)}
+.hh-module-controls>.hh-module-button{flex:0 0 auto}
+.hh-module-controls>.other-active-users{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;min-width:0;max-width:320px;overflow-x:auto;scrollbar-width:thin}
+.hh-module-controls>.other-active-users.hidden{display:none}
+.online-peer{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;max-width:165px;overflow:hidden;text-overflow:ellipsis;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:650;line-height:1.1;color:#604733;background:#f1e9e0;border:1px solid #ddcebf;flex:0 0 auto}
+.online-peer::before{content:"";background:#28856a;border-radius:50%;width:6px;height:6px;flex:0 0 6px}
+.online-peer-count{font-weight:800}
+@media(max-width:1090px){
+ .topbar{flex-wrap:wrap}
+ .top-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}
+ .hh-module-controls{margin-right:auto;max-width:none}
+}
+@media(max-width:620px){
+ .topbar{align-items:stretch;flex-wrap:wrap}
+ .top-brand{flex:1 1 100%}
+ .top-actions{width:100%;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+ .hh-module-controls{flex:1 0 100%;width:100%;display:flex;justify-content:flex-end;gap:7px}
+ .hh-module-controls>.other-active-users{min-width:0;max-width:none;flex:1 1 auto;overflow:hidden}
+ .hh-module-controls>.other-active-users>.online-peer{max-width:min(30vw,118px)}
+ .hh-module-controls>.hh-module-button{max-width:57%;font-size:12px;padding:7px 10px}
+ .top-actions>.identity{margin-left:auto;max-width:130px;font-size:11px}
+ .top-actions>.language-control{flex:0 0 auto}
+ .top-actions>#logout{flex:0 0 auto}
+}
