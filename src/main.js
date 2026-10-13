@@ -38,7 +38,8 @@ function chooseLanguage(language){
  const snapshot=form?{
   type:form.dataset.type,
   record:form.dataset.record,
-  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name).map(el=>[el.name,el.value]))
+  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name&&el.name!=='roles').map(el=>[el.name,el.value])),
+  roleSelections:Array.from(form.querySelectorAll('input[name="roles"]:checked')).map(el=>el.value)
  }:null;
  setLanguage(language);
  refreshStaticLanguage();
@@ -61,6 +62,9 @@ function chooseLanguage(language){
     if(name==='category'||name==='contractor')continue;
     const field=fresh.elements.namedItem(name);
     if(field)field.value=value;
+   }
+   for(const checkbox of fresh.querySelectorAll('input[name="roles"]')){
+    checkbox.checked=snapshot.roleSelections.includes(checkbox.value);
    }
   }
  }
