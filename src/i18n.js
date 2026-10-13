@@ -5,6 +5,8 @@ const ru = {
   'Choose a project and closing date.':'Выберите проект и дату закрытия.',
   'Monthly closing preview':'Предварительный расчёт закрытия месяца',
   'rentals':'аренд',
+  'Enter the test code or sign in with an approved corporate account.':'Введите тестовый код или войдите под разрешённой корпоративной учётной записью.',
+  'Microsoft sign-in failed':'Не удалось выполнить вход через Microsoft 365',
   'Sign in with Microsoft 365':'Войти через Microsoft 365',
   'Administrator login':'Вход администратора',
   'Emergency administrator access':'Резервный доступ администратора',
