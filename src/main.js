@@ -33,7 +33,7 @@ function chooseLanguage(language){
  setLanguage(language);
  refreshStaticLanguage();
  if(state.user){
-  $('#mode-label').textContent=tx(state.demo?'DEMO':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');
+  $('#mode-label').textContent=tx(state.demo?'DEMO':cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');
   render();
  }
  if(snapshot){
@@ -122,6 +122,18 @@ function fakeData(){
  return {items,projects,employees,rentals:rents,movements:[],history:[],periods:[],messages:[]};
 }
 async function initMicrosoft(){
+ // Official release remains read-only/inaccessible until all cutover checks pass.
+ // This is only a UI maintenance state; production API separately enforces auth.
+ if(cfg.productionMode&&!cfg.launchReady){
+  $('#test-pin').closest('label').classList.add('hidden');
+  $('#login-microsoft').disabled=true;
+  $('#login-microsoft').classList.add('hidden');
+  $('#login-corporate').classList.add('hidden');
+  $('#admin-login-toggle').classList.add('hidden');
+  $('#admin-login-form').classList.add('hidden');
+  setLoginStatus('The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.');
+  return;
+ }
  if(!cfg.testPinMode){
   $('#test-pin').closest('label').classList.add('hidden');
   const loginButton=$('#login-microsoft');
@@ -142,7 +154,7 @@ async function initMicrosoft(){
    await state.client.initialize();
    if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
   }else if(!cfg.testPinMode){
-   setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');
+   setLoginStatus('Microsoft login is not configured for this application.');
    $('#login-microsoft').disabled=true;
    return;
   }
@@ -163,7 +175,7 @@ async function connect(){
    try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
  }
  state.user=data.user;state.data=data;state.demo=false;
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
 }
 async function api(path,body,method='GET'){
