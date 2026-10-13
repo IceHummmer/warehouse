@@ -345,7 +345,7 @@ function modal(type,value=''){
  if(type==='issue'){title='Issue consumable material';content=filterSelectField('category','Category',categoryOptions('consumable'),'Select category')+dependentSelectField('item_id','Consumable item','Choose a category first')+selectField('project_id','Project',projectOpt)+filterSelectField('contractor','Contractor',contractorOptions(),'Select contractor')+dependentSelectField('employee_id','Employee','Choose a contractor first')+field('quantity','Quantity','number',1,'min="1" step="1"')+field('note','Note','text','');}
  if(type==='rent'){title='Rent equipment';content=filterSelectField('category','Category',categoryOptions('rental'),'Select category')+dependentSelectField('item_id','Rental equipment','Choose a category first')+selectField('project_id','Project',projectOpt)+filterSelectField('contractor','Contractor',contractorOptions(),'Select contractor')+dependentSelectField('employee_id','Employee','Choose a contractor first')+field('quantity','Quantity','number',1,'min="1" step="1"')+field('started_on','Issue date','date',today());note=tx('Select a category to see its equipment, and a contractor to see only their employees. The rate is fixed at the time of issue.');}
  if(type==='close'){title=tx('Close rental — ')+(rental?.item_name||'');content=field('closed_on','Return / loss date','date',today())+selectField('status','Condition',[{id:'returned',label:'Returned'},{id:'lost',label:'Lost / broken'}],'returned')+field('note','Reason / note','text','');note=tx('Closes the full quantity: ')+esc(rental?.quantity)+tx('. Partial return is not available in v1.');}
- if(type==='monthly'){title='Monthly rental closing';const end=new Date();end.setMonth(end.getMonth()+1,0);const through=end.toISOString().slice(0,10);content=selectField('project_id','Project',projectOpt)+field('through','Closing date (month end)','date',through);note=tx('Bills all active project rentals through the selected last day of a month, without changing their physical stock.');}
+ if(type==='monthly'){title='Monthly rental closing';const end=new Date();end.setMonth(end.getMonth()+1,0);const through=end.toISOString().slice(0,10);content=selectField('project_id','Project',projectOpt)+field('through','Closing date (month end)','date',through)+'<input name="expected_count" type="hidden" value=""><input name="expected_total" type="hidden" value=""><div id="monthly-preview" class="monthly-preview field wide" aria-live="polite"></div>';note=tx('Bills all active project rentals through the selected last day of a month, without changing their physical stock.');}
  if(type==='adjust'){title='Correct stock (administrator)';content=selectField('item_id','Item',itemOptions(),item?.id)+field('total_qty','New total quantity','number',item?.total_qty??0,'min="0" step="1"')+field('reason','Reason for adjustment','text','');note=tx('Adjustments are recorded in Change History.');}
  if(type==='project'){title='Add project';content=field('name','Project name');}
  if(type==='employee'){title='Add employee';content=field('contractor','Contractor','text','')+field('name','Employee name');}
@@ -353,6 +353,42 @@ function modal(type,value=''){
  $('#modal-host').innerHTML='<div class="modal-screen" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-label="'+esc(type==='close'?title:tx(title))+'"><div class="modal-head"><h3>'+esc(type==='close'?title:tx(title))+'</h3><button class="icon-button" data-action="dismiss" aria-label="'+esc(tx('Close'))+'">×</button></div><form id="record-form" data-type="'+esc(type)+'" data-record="'+esc(value)+'"><div class="modal-body">'+(note?'<div class="note">'+note+'</div>':'')+'<div class="fields">'+content+'</div></div><div class="modal-footer"><button type="button" class="button" data-action="dismiss">'+esc(tx('Cancel'))+'</button><button type="submit" class="button primary">'+esc(tx('Save changes'))+'</button></div></form></section></div>';
  $('#record-form').addEventListener('submit',save);
  if(type==='rent'||type==='issue')attachIssueFilters($('#record-form'),type==='rent'?'rental':'consumable');
+ if(type==='monthly')attachMonthlyPreview($('#record-form'));
+}
+function attachMonthlyPreview(form){
+ const preview=form.querySelector('#monthly-preview');
+ const submit=form.querySelector('button[type=submit]');
+ let sequence=0;
+ const update=async()=>{
+  const request=++sequence;
+  const projectId=form.elements.namedItem('project_id')?.value||'';
+  const through=form.elements.namedItem('through')?.value||'';
+  form.elements.namedItem('expected_count').value='';
+  form.elements.namedItem('expected_total').value='';
+  submit.disabled=true;
+  preview.textContent=tx('Calculating rental charges…');
+  if(!projectId||!through){preview.textContent=tx('Choose a project and closing date.');return;}
+  try{
+   const closing=state.demo
+    ? {count:state.data.rentals.filter(r=>r.status==='active'&&r.project_id===projectId&&r.started_on<=through).length,rows:[],total:0}
+    : await api('/api/rentals/monthly-preview?'+new URLSearchParams({project_id:projectId,through}));
+   if(request!==sequence||!form.isConnected)return;
+   if(!closing.count){preview.textContent=tx('No unbilled rental periods for this project');return;}
+   form.elements.namedItem('expected_count').value=String(closing.count);
+   form.elements.namedItem('expected_total').value=String(closing.total);
+   const title=tx('Monthly closing preview')+': '+closing.count+' '+tx('rentals')+' · '+money(closing.total);
+   const previewRows=closing.rows.slice(0,8).map(row=>
+    '<tr><td>'+esc(row.sku)+'</td><td>'+esc(row.item)+'</td><td>'+esc(row.employee)+'</td><td>'+money(row.amount)+'</td></tr>').join('');
+   preview.innerHTML='<strong>'+esc(title)+'</strong>'+(closing.rows.length?
+    '<div class="table-scroller"><table class="data-table"><thead><tr><th>'+esc(tx('SKU'))+'</th><th>'+esc(tx('Equipment'))+'</th><th>'+esc(tx('Employee'))+'</th><th>'+esc(tx('Amount'))+'</th></tr></thead><tbody>'+previewRows+'</tbody></table></div>':'');
+   submit.disabled=false;
+  }catch(error){
+   if(request!==sequence||!form.isConnected)return;
+   preview.textContent=localizeError(error.message);
+  }
+ };
+ for(const key of ['project_id','through'])form.elements.namedItem(key).addEventListener('change',update);
+ update();
 }
 function dateISO(value){return String(value||'').slice(0,10);}
 function amount(kind,rate,qty,start,end){
