@@ -174,7 +174,7 @@ async function initMicrosoft(){
     // Silently reusing Microsoft from the other registry can need consent
     // or explicit interaction. Never loop on prompt=none failures.
     setLoginStatus(error.message||'Microsoft sign-in failed');
-    if(incomingFromProjects)$('#warehouseModuleDenied').classList.remove('hidden');
+    // An SSO interaction error is not a permissions denial; manual sign-in remains available.
     return;
    }
    if(redirectResult?.account){
@@ -680,6 +680,7 @@ $('#login-corporate').addEventListener('click',async()=>{
  }catch(error){
   state.microsoftSession=false;state.token=null;
   setLoginStatus(error.message||'Microsoft sign-in failed');
+  if(error.status===403)showWarehouseDenied();
   $('#login-status').setAttribute('role','alert');
  }finally{
   btn.disabled=false;btn.textContent=tx('Sign in with Microsoft 365');
@@ -725,6 +726,7 @@ $('#login-microsoft').addEventListener('click',async()=>{
       ?'Cannot reach the test API. Please retry, or report this connection error.'
       :e.message;
   setLoginStatus(message);
+  if(e.status===403)showWarehouseDenied();
   status.setAttribute('role','alert');
  }finally{
   button.disabled=false;button.textContent=tx(cfg.testPinMode?'Open test warehouse':'Sign in with Microsoft 365');
