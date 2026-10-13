@@ -4,6 +4,16 @@ import {PublicClientApplication} from '@azure/msal-browser';
 const $=(sel,root=document)=>root.querySelector(sel);
 const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const cfg=window.warehouseConfig||{};
+const PROJECT_REGISTER_URL='https://project-register.helsinginhitsaus.fi/';
+const WAREHOUSE_REGISTER_URL='https://hh-warehouse.onrender.com/';
+const incomingFromProjects=new URL(location.href).searchParams.get('from_module')==='projects';
+const autoModuleSso=incomingFromProjects&&new URL(location.href).searchParams.get('auto_sso')==='1';
+const showWarehouseDenied=()=>{
+ $('#warehouseModuleDenied').classList.remove('hidden');
+ $('#landing').classList.remove('hidden');
+ $('#shell').classList.add('hidden');
+ setLoginStatus('');
+};
 // The language belongs to the viewer, never to warehouse records.
 // Save and restore any open form values while translating its chrome.
 function setLoginStatus(message){
@@ -28,7 +38,8 @@ function chooseLanguage(language){
  const snapshot=form?{
   type:form.dataset.type,
   record:form.dataset.record,
-  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name).map(el=>[el.name,el.value]))
+  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name&&el.name!=='roles').map(el=>[el.name,el.value])),
+  roleSelections:Array.from(form.querySelectorAll('input[name="roles"]:checked')).map(el=>el.value)
  }:null;
  setLanguage(language);
  refreshStaticLanguage();
@@ -51,6 +62,9 @@ function chooseLanguage(language){
     if(name==='category'||name==='contractor')continue;
     const field=fresh.elements.namedItem(name);
     if(field)field.value=value;
+   }
+   for(const checkbox of fresh.querySelectorAll('input[name="roles"]')){
+    checkbox.checked=snapshot.roleSelections.includes(checkbox.value);
    }
   }
  }
@@ -154,6 +168,20 @@ async function initMicrosoft(){
   if(cfg.tenantId&&cfg.clientId&&cfg.apiScope){
    state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin+'/'},cache:{cacheLocation:'sessionStorage'}});
    await state.client.initialize();
+   let redirectResult=null;
+   try{redirectResult=await state.client.handleRedirectPromise();}
+   catch(error){
+    // Silently reusing Microsoft from the other registry can need consent
+    // or explicit interaction. Never loop on prompt=none failures.
+    setLoginStatus(error.message||'Microsoft sign-in failed');
+    // An SSO interaction error is not a permissions denial; manual sign-in remains available.
+    return;
+   }
+   if(redirectResult?.account){
+    state.account=redirectResult.account;state.microsoftSession=true;
+    try{await connect();return;}
+    catch(error){state.microsoftSession=false;setLoginStatus(error.message);if(error.status===403)showWarehouseDenied();return;}
+   }
    if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
   }else if(!cfg.testPinMode){
    setLoginStatus('Microsoft login is not configured for this application.');
@@ -168,7 +196,18 @@ async function initMicrosoft(){
    $('#test-pin').focus();return;
  }
  const accounts=state.client.getAllAccounts();
- if(accounts.length){state.account=accounts[0];state.microsoftSession=true;try{await connect();}catch(e){state.microsoftSession=false;setLoginStatus(e.message);}}
+ if(accounts.length){
+  state.account=accounts[0];state.microsoftSession=true;
+  try{await connect();return;}
+  catch(error){state.microsoftSession=false;setLoginStatus(error.message);if(error.status===403){showWarehouseDenied();return;}}
+ }
+ if(autoModuleSso&&!state.adminSession){
+  // MSAL obtains its own Warehouse-scoped token via Microsoft SSO.
+  // No Project Register cookies or tokens are shared with Warehouse.
+  history.replaceState({},document.title,location.pathname);
+  try{await state.client.loginRedirect({scopes:[cfg.apiScope],prompt:'none'});}
+  catch(error){setLoginStatus(error.message||'Microsoft sign-in failed');}
+ }
 }
 async function connect(){
  if(state.microsoftSession){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
@@ -184,7 +223,7 @@ async function api(path,body,method='GET'){
  const token=state.microsoftSession?(await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken:state.token;
  const response=await fetch(String(cfg.apiUrl||'http://localhost:8787').replace(/\/$/,'')+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'Idempotency-Key':crypto.randomUUID()}:{})},body:body?JSON.stringify(body):undefined});
  const data=await response.json().catch(()=>({}));
- if(!response.ok)throw new Error(data.error||'Operation failed');
+ if(!response.ok){const error=new Error(data.error||'Operation failed');error.status=response.status;throw error;}
  return data;
 }
 async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}if(state.view==='users')await loadMembers();}render();}
@@ -203,7 +242,7 @@ function cols(){
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
  projects:[['name','Project']],employees:[['contractor','Contractor'],['name','Employee']],
- users:[['email','Email'],['role','Role'],['disabled','Access status'],['_actions','Actions']],
+ users:[['email','Email'],['roles','Roles'],['disabled','Access status'],['_actions','Actions']],
  history:[['created_at','Date & time'],['actor','User'],['entity','Entity'],['entity_id','Record'],['field','Field'],['before_value','Before'],['after_value','After'],['detail','Details']],
  system:[['created_at','Date & time'],['severity','Type'],['subject','Subject'],['details','Details'],['_actions','Actions']]
  };
@@ -218,7 +257,7 @@ function rows(){
  case 'rentals':return d.rentals;
  case 'projects':return d.projects;
  case 'employees':return d.employees;
- case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',disabled:false,isBootstrap:true})),...state.members];
+ case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',roles:['admin'],disabled:false,isBootstrap:true})),...state.members];
  case 'warehouse-history':return d.movements.filter(x=>x.historical);
  case 'history':return d.history;
  case 'system':return d.messages||[];
@@ -370,6 +409,7 @@ function cell(x,key){
  if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(tx(value==='low'?'low':value==='ok'?'ok':value))+'</span>';
  if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost'||key==='original_total_cost')return money(value);
  if(key==='created_at')return value?new Date(value).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI'):'';
+ if(key==='roles')return esc((Array.isArray(value)&&value.length?value:[x.role]).map(role=>tx(role)).join(' · '));
  if(key==='rate_unit'||key==='severity'||key==='entity'||key==='field'||key==='role')return esc(tx(value));
  if(key==='disabled')return esc(tx(value?'Disabled':'Active'));
  if(key==='started_on'||key==='issued_on'||key==='returned_on')return esc(fullDate(value));
@@ -380,7 +420,7 @@ const selectField=(name,label,values,selected)=>'<label class="field"><span>'+es
 const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' ('+tx('Available')+': '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
  let title='',content='',note='',record=null;
- const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',disabled:false}:null);
+ const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',roles:['admin'],disabled:false}:null);
  const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name}));
  if(type==='item'||type==='edit'){
   title=type==='edit'?'Edit item':'Create inventory item';record=type==='edit'?item:null;
@@ -403,7 +443,11 @@ function modal(type,value=''){
  if(type==='member'||type==='member-edit'){
   title=type==='member'?'Add warehouse user':'Edit warehouse user';
   content=field('email','Account email','email',member?.email||'',type==='member-edit'?'readonly':'')+
-    selectField('role','User role',[{id:'viewer',label:tx('viewer')},{id:'operator',label:tx('operator')},{id:'admin',label:tx('admin')}],member?.role||'viewer')+
+    '<fieldset class="role-checklist"><legend>'+esc(tx('User roles'))+'</legend>'+
+    [{id:'viewer',label:'viewer'},{id:'operator',label:'operator'},{id:'admin',label:'admin'}].map(option=>
+     '<label class="role-choice"><input type="checkbox" name="roles" value="'+option.id+'" '+
+     ((member?.roles||[member?.role||'viewer']).includes(option.id)?'checked':'')+
+     '><span>'+esc(tx(option.label))+'</span></label>').join('')+'</fieldset>'+
     (type==='member-edit'?selectField('disabled','Account status',[{id:'false',label:tx('Enabled')},{id:'true',label:tx('Disabled (no access)')}],String(member?.disabled||false)):'');
   note=tx('Only approved Microsoft Entra accounts can access this production system.');
  }
@@ -529,7 +573,12 @@ function demoMutation(type,b,value){
 function nextDate(s){const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
 async function save(event){
  event.preventDefault();const form=event.currentTarget,type=form.dataset.type,value=form.dataset.record;
- const b=Object.fromEntries(new FormData(form).entries());
+ const formData=new FormData(form);const b=Object.fromEntries(formData.entries());
+ if(type==='member'||type==='member-edit'){
+  b.roles=formData.getAll('roles');
+  if(!b.roles.length){toast('Select at least one role.',true);return;}
+  delete b.role;
+ }
  try{
   if(type==='rent'||type==='issue'){
    const employee=state.data.employees.find(x=>x.id===b.employee_id);
@@ -569,6 +618,11 @@ document.addEventListener('click',async e=>{
  }
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee','member','member-edit'].includes(t))modal(t,v);
 });
+$('#warehouse-module-select').addEventListener('change',event=>{
+ if(event.target.value==='projects')window.location.assign(PROJECT_REGISTER_URL+'?from_module=warehouse&auto_sso=1');
+ event.target.value='warehouse';
+});
+$('#warehouseModuleReturn').addEventListener('click',()=>window.location.assign(PROJECT_REGISTER_URL));
 $('#login-demo').addEventListener('click',beginDemo);
  for(const languageSelect of ['#language-select','#login-language-select']){
   $(languageSelect)?.addEventListener('change',event=>chooseLanguage(event.target.value));
@@ -626,6 +680,7 @@ $('#login-corporate').addEventListener('click',async()=>{
  }catch(error){
   state.microsoftSession=false;state.token=null;
   setLoginStatus(error.message||'Microsoft sign-in failed');
+  if(error.status===403)showWarehouseDenied();
   $('#login-status').setAttribute('role','alert');
  }finally{
   btn.disabled=false;btn.textContent=tx('Sign in with Microsoft 365');
@@ -671,6 +726,7 @@ $('#login-microsoft').addEventListener('click',async()=>{
       ?'Cannot reach the test API. Please retry, or report this connection error.'
       :e.message;
   setLoginStatus(message);
+  if(e.status===403)showWarehouseDenied();
   status.setAttribute('role','alert');
  }finally{
   button.disabled=false;button.textContent=tx(cfg.testPinMode?'Open test warehouse':'Sign in with Microsoft 365');
@@ -679,8 +735,14 @@ $('#login-microsoft').addEventListener('click',async()=>{
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
 $('#logout').addEventListener('click',async()=>{
  if(state.microsoftSession){
-  if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
-  location.reload();return;
+  // Match Project Register: end this application's local session without
+  // signing the user out of the whole Microsoft tenant or opening an account
+  // picker. MSAL can clear local cache without navigating to Entra sign-out.
+  try{
+   await state.client.logoutRedirect({account:state.account,onRedirectNavigate:()=>false});
+  }catch(error){console.warn('Local Microsoft cache logout:',error.message);}
+  state.microsoftSession=false;state.token=null;state.account=null;
+  location.replace(location.pathname);return;
  }
  if(cfg.testPinMode){
   try{await api('/api/auth/logout',{},'POST');}catch{}
@@ -691,8 +753,8 @@ $('#logout').addEventListener('click',async()=>{
   sessionStorage.removeItem('hhWarehouseAdminToken');
   location.reload();return;
  }
- if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
- location.reload();
+ // Only the local warehouse session is ended. Never show a Microsoft picker.
+ location.replace(location.pathname);
 });
 $('#search').addEventListener('input',e=>{state.search=e.target.value;state.page=1;render();});
 $('#page-content').addEventListener('change',event=>{

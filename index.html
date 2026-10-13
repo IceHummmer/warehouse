@@ -5,7 +5,7 @@
  <meta name="theme-color" content="#785d42"/>
  <meta name="application-name" content="HH Warehouse Register"/>
  <link rel="manifest" href="/manifest.webmanifest"/>
- <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+ <link rel="icon" href="/hh-logo.svg" type="image/svg+xml"/>
  <title>HH Warehouse Register</title>
  <script src="/config.js"></script>
 </head>
@@ -13,9 +13,14 @@
  <section id="landing" class="landing">
   <div class="login-card">
    <div class="login-topline"><div class="eyebrow" data-i18n="HELSINGIN HITSAUS · WAREHOUSE CONTROL">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div><label class="language-control" for="login-language-select"><span data-i18n="Language">Language</span><select id="login-language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label></div>
-   <div class="brand-lockup"><span class="logo-mark">H</span><h1>Warehouse Register</h1></div>
+   <div class="brand-lockup"><img class="hh-logo login-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><h1>Warehouse Register</h1></div>
    <p data-i18n="Inventory, materials, tools, project assignments and rentals in one workspace.">Inventory, materials, tools, project assignments and rentals in one workspace.</p>
    <div id="login-status" class="muted" data-i18n="The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.">The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.</div>
+   <div id="warehouseModuleDenied" class="module-access-denied hidden" role="alert">
+     <strong data-i18n="No access to Warehouse Register">No access to Warehouse Register</strong>
+     <p data-i18n="Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.">Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.</p>
+     <button id="warehouseModuleReturn" type="button" class="button outline" data-i18n="Back to Project Register">← Back to Project Register</button>
+   </div>
    <div class="login-actions">
     <label class="field hidden"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
     <button class="button primary hidden" id="login-microsoft" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
@@ -34,8 +39,8 @@
  </section>
  <div id="shell" class="shell hidden">
   <header class="topbar">
-   <div class="top-brand"><span class="logo-mark small">H</span><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
-   <div class="top-actions"><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
+   <div class="top-brand"><img class="hh-logo header-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
+   <div class="top-actions"><label class="module-switch" for="warehouse-module-select"><span data-i18n="Module">Module</span><select id="warehouse-module-select" aria-label="Module"><option value="warehouse" data-i18n="Warehouse Register">Warehouse Register</option><option value="projects" data-i18n="Project Register">Project Register</option></select></label><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
   </header>
   <main>
    <section class="overview">
@@ -51,10 +56,10 @@
     <button data-view="rentals" class="tab" data-i18n="Rentals">Rentals</button>
     <button data-view="projects" class="tab" data-i18n="Projects">Projects</button>
     <button data-view="employees" class="tab" data-i18n="Employees">Employees</button>
-    <button data-view="users" class="tab admin-only" data-i18n="Users & Access">Users & Access</button>
     <button data-view="warehouse-history" class="tab" data-i18n="Warehouse History">Warehouse History</button>
     <button data-view="reports" class="tab" data-i18n="Reports">Reports</button>
     <button data-view="history" class="tab" data-i18n="Change History">Change History</button>
+    <button data-view="users" class="tab admin-only" data-i18n="Users & Access">Users & Access</button>
     <button data-view="system" class="tab admin-only"><span data-i18n="System messages">System messages</span> <span id="unread-count" class="count hidden">0</span></button>
    </nav>
    <section class="workspace">
