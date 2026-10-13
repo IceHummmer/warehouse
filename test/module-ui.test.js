@@ -15,7 +15,7 @@ test('Warehouse header has a same-tab Project Register button, not the old selec
 
 test('Warehouse module entry shows a progress view until SSO and data resolve',()=>{
  assert.match(html,/id="moduleLoading"/);
- assert.match(html,/data-module-sso='pending'/);
+ assert.match(html,/dataset\.moduleSso='pending'/);
  assert.match(styles,/html\[data-module-sso="pending"\] \.hh-module-loading/);
  assert.match(app,/document\.documentElement\.removeAttribute\('data-module-sso'\)/);
  assert.match(html,/href="\/hh-logo\.svg"/);
