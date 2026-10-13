@@ -569,7 +569,7 @@ $('#admin-login-form').addEventListener('submit',async event=>{
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),90000);
   let response;
   try{
-   response=await fetch((cfg.apiUrl||'').replace(/\\/$/,'')+'/api/auth/admin-login',{
+   response=await fetch((cfg.apiUrl.endsWith('/')?cfg.apiUrl.slice(0,-1):cfg.apiUrl)+'/api/auth/admin-login',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({username:'admin',password}),signal:controller.signal
    });
