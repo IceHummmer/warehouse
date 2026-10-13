@@ -24,7 +24,7 @@ const fullDate=x=>x?String(x).slice(0,10):'';
 const options=(list,selected)=>list.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(x.label||x.name)+'</option>').join('');
 function toast(message,bad=false){const n=$('#toast');n.textContent=message;n.className='toast'+(bad?' error':'');setTimeout(()=>n.classList.add('hidden'),4500);}
 function fakeData(){
- const projects=['Rauma','Eems_Carrier','Uusikaupunki'].map(name=>({id:id(),name}));
+ const projects=['Demo Project A','Demo Project B','Demo Project C'].map(name=>({id:id(),name}));
  const employees=[{id:id(),name:'Example Worker A',contractor:'Example Contractor'},{id:id(),name:'Example Worker B',contractor:'Example Contractor'}];
  const presets=[
  ['CMS-101','Cutting discs 125 mm','Consumables','consumable',84,10,0,0],
