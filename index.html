@@ -15,10 +15,10 @@
    <div class="login-topline"><div class="eyebrow" data-i18n="HELSINGIN HITSAUS · WAREHOUSE CONTROL">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div><label class="language-control" for="login-language-select"><span data-i18n="Language">Language</span><select id="login-language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label></div>
    <div class="brand-lockup"><span class="logo-mark">H</span><h1>Warehouse Register</h1></div>
    <p data-i18n="Inventory, materials, tools, project assignments and rentals in one workspace.">Inventory, materials, tools, project assignments and rentals in one workspace.</p>
-   <div id="login-status" class="muted" data-i18n="Enter the warehouse test access code to view the imported Excel data.">Enter the warehouse test access code to view the imported Excel data.</div>
+   <div id="login-status" class="muted" data-i18n="The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.">The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.</div>
    <div class="login-actions">
-    <label class="field"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
-    <button class="button primary" id="login-microsoft" data-i18n="Open test warehouse">Open test warehouse</button>
+    <label class="field hidden"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
+    <button class="button primary hidden" id="login-microsoft" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
     <button class="button outline hidden" id="login-corporate" type="button" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
     <button class="button outline hidden" id="admin-login-toggle" type="button" data-i18n="Administrator login">Administrator login</button>
     <form id="admin-login-form" class="admin-login-form hidden" autocomplete="off">
@@ -29,7 +29,7 @@
     </form>
     <button class="button outline hidden" id="login-demo" disabled data-i18n="Demo disabled">Demo disabled</button>
    </div>
-   <small class="muted" data-i18n="This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.">This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.</small>
+   <small class="muted" data-i18n="Access will open after the official warehouse inventory cutover is approved.">Access will open after the official warehouse inventory cutover is approved.</small>
   </div>
  </section>
  <div id="shell" class="shell hidden">
@@ -72,7 +72,7 @@
     <div id="page-content" class="content"></div>
    </section>
   </main>
-  <footer data-i18n="HH Warehouse Register · Test Version 0.1 · All times displayed in local time">HH Warehouse Register · Test Version 0.1 · All times displayed in local time</footer>
+  <footer data-i18n="HH Warehouse Register · Official edition · All times displayed in local time">HH Warehouse Register · Official edition · All times displayed in local time</footer>
  </div>
  <div id="modal-host"></div><div id="toast" class="toast hidden" role="status"></div>
  <script type="module" src="/src/main.js"></script>
