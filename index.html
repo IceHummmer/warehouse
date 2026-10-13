@@ -16,6 +16,11 @@
    <div class="brand-lockup"><img class="hh-logo login-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><h1>Warehouse Register</h1></div>
    <p data-i18n="Inventory, materials, tools, project assignments and rentals in one workspace.">Inventory, materials, tools, project assignments and rentals in one workspace.</p>
    <div id="login-status" class="muted" data-i18n="The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.">The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.</div>
+   <div id="warehouseModuleDenied" class="module-access-denied hidden" role="alert">
+     <strong data-i18n="No access to Warehouse Register">No access to Warehouse Register</strong>
+     <p data-i18n="Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.">Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.</p>
+     <button id="warehouseModuleReturn" type="button" class="button outline" data-i18n="Back to Project Register">← Back to Project Register</button>
+   </div>
    <div class="login-actions">
     <label class="field hidden"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
     <button class="button primary hidden" id="login-microsoft" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
