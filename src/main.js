@@ -64,11 +64,12 @@ const pages={
  projects:['Projects','Warehouse project directory. Independent from Project Register.'],
  employees:['Employees','Staff and contractor directory.'],
  'warehouse-history':['Warehouse History','Imported issue, receipt, return and rental billing operations from the Excel workbook.'],
+ reports:['Reports','Stock balances and billed rental periods, with export to CSV.'],
  history:['Change History','Changes made in the new warehouse application.'],
  system:['System messages','Administrative messages and operational warnings.']
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
-const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1};
+const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -212,6 +213,7 @@ function render(){
  const count=(d.messages||[]).filter(m=>!m.is_read).length;
  $('#unread-count').textContent=count;$('#unread-count').classList.toggle('hidden',!count);
  if(state.view==='dashboard'){$('#page-content').innerHTML=dashboard();return;}
+ if(state.view==='reports'){$('#page-content').innerHTML=reportView();return;}
  const columns=cols(), q=state.search.toLowerCase(),found=rows().filter(x=>JSON.stringify(x).toLowerCase().includes(q));
  found.sort((a,b)=>{const x=a[state.sort],y=b[state.sort];const c=typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),undefined,{numeric:true});if(c===0&&state.view==='employees')return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true});return state.descending?-c:c;});
  const widths=JSON.parse(localStorage.getItem('hh-wh-widths-'+state.view)||'{}');
@@ -231,6 +233,80 @@ function dashboard(){
  '<div class="dash-card"><h3>'+esc(tx('Warehouse movements'))+'</h3><p>'+esc(tx('Receipts, issues, rental releases and losses are captured as auditable operations.'))+'</p>'+button('View receipts','view','receipts')+'</div>'+
  '<div class="dash-card"><h3>'+esc(tx('Project allocations'))+'</h3><div class="big-number">'+d.projects.length+'</div><p>'+esc(tx('Projects are independent from HH Project Register.'))+'</p>'+button('View projects','view','projects')+'</div>'+
  '<div class="dash-card"><h3>'+esc(tx('Rental policy'))+'</h3><p>'+esc(tx('Daily tariffs include both dates. Monthly tariffs bill every calendar month touched. Transfer and partial return are disabled in v1.'))+'</p></div></div>';
+}
+const reportColumns={
+ inventory:[['sku','SKU'],['name','Item'],['category','Category'],['kind','Type'],['total_qty','Total'],['rented_qty','Rented'],['available_qty','Available'],['critical_qty','Critical'],['critical','Stock status'],['rental_rate','Rental rate']],
+ billing:[['from','From'],['to','To'],['project','Project'],['contractor','Contractor'],['employee','Employee'],['sku','SKU'],['item','Equipment'],['quantity','Quantity'],['units','Billing units'],['rate','Rate'],['amount','Amount']]
+};
+function reportView(){
+ const r=state.report,kind=r.type,cols=reportColumns[kind]||reportColumns.inventory;
+ const projectOptions=options([{id:'',label:tx('All projects')},...state.data.projects.map(p=>({id:p.id,label:p.name}))],r.projectId);
+ const controls='<div class="report-controls">'+
+ '<label class="field">'+esc(tx('Report type'))+'<select id="report-type"><option value="inventory" '+(kind==='inventory'?'selected':'')+'>'+esc(tx('Stock balance report'))+'</option><option value="billing" '+(kind==='billing'?'selected':'')+'>'+esc(tx('Rental billing report'))+'</option></select></label>'+
+ (kind==='billing'?'<label class="field">'+esc(tx('Project'))+'<select id="report-project">'+projectOptions+'</select></label>'+
+ '<label class="field">'+esc(tx('From'))+'<input id="report-from" type="date" value="'+esc(r.from)+'"></label>'+
+ '<label class="field">'+esc(tx('To'))+'<input id="report-to" type="date" value="'+esc(r.to)+'"></label>':'')+
+ '<button class="button primary" data-action="load-report" '+(r.loading?'disabled':'')+'>'+esc(tx(r.loading?'Loading…':'Generate report'))+'</button>'+
+ '<button class="button" data-action="export-report" '+(!r.loaded||!r.rows.length?'disabled':'')+'>'+esc(tx('Export CSV'))+'</button></div>';
+ const msg=r.error?'<p class="report-error">'+esc(localizeError(r.error))+'</p>':
+ r.loading?'<p>'+esc(tx('Loading report…'))+'</p>':
+ !r.loaded?'<p>'+esc(tx('Select a report to generate.'))+'</p>':'';
+ const rows=r.rows.filter(x=>JSON.stringify(x).toLowerCase().includes(state.search.toLowerCase()));
+ const headers=cols.map(([key,label])=>'<th><div class="heading">'+esc(tx(label))+'</div></th>').join('');
+ const body=rows.slice((state.page-1)*125,state.page*125).map(x=>'<tr>'+cols.map(([key])=>{
+ const value=key==='critical'?(x.critical?tx('Critical'):tx('Available')):key==='kind'?tx(x[key]):x[key];
+ return '<td>'+((key==='amount'||key==='rate'||key==='rental_rate')?money(value):esc(value))+'</td>';
+ }).join('')+'</tr>').join('');
+ const totalPages=Math.max(1,Math.ceil(rows.length/125));
+ const pager=rows.length?'<div class="paging">'+rows.length+' '+esc(tx('records'))+' · '+esc(tx('Page'))+' '+state.page+' '+esc(tx('of'))+' '+totalPages+
+ ' <button class="mini" data-action="previous-page" '+(state.page<=1?'disabled':'')+'>'+esc(tx('← Previous'))+'</button><button class="mini" data-action="next-page" '+(state.page>=totalPages?'disabled':'')+'>'+esc(tx('Next →'))+'</button></div>':'';
+ const summary=r.loaded?'<div class="report-summary"><strong>'+esc(tx('Records'))+': '+r.rows.length+'</strong>'+
+ (kind==='billing'?'<strong>'+esc(tx('Total billed'))+': '+money(r.total)+'</strong>':'')+
+ (kind==='billing'?'<span>'+esc(tx('Billing uses web-calculated periods only; imported Excel charges remain in Warehouse History.'))+'</span>':'')+'</div>':'';
+ return controls+msg+summary+(r.loaded?'<div class="table-scroller"><table class="data-table"><thead><tr>'+headers+'</tr></thead><tbody>'+body+'</tbody></table></div>'+pager:'');
+}
+async function loadReport(){
+ if(state.view!=='reports')return;
+ const r=state.report;
+ if(r.loading)return;
+ if(r.type==='billing'){
+  r.projectId=$('#report-project')?.value||'';
+  r.from=$('#report-from')?.value||'';
+  r.to=$('#report-to')?.value||'';
+ }
+ r.loaded=false;r.loading=true;r.error='';state.page=1;render();
+ try{
+  let payload;
+  if(state.demo){
+   if(r.type==='inventory')payload={rows:state.data.items.map(x=>({...x,available_qty:x.total_qty-x.rented_qty,critical:x.total_qty<x.critical_qty}))};
+   else payload={rows:[],total:0};
+  }else if(r.type==='inventory')payload=await api('/api/reports/inventory');
+  else{
+   const query=new URLSearchParams();
+   if(r.from)query.set('from',r.from);
+   if(r.to)query.set('to',r.to);
+   if(r.projectId)query.set('project_id',r.projectId);
+   payload=await api('/api/reports/rental-billing?'+query);
+  }
+  r.rows=payload.rows||[];r.total=payload.total||0;r.source=payload.source||'';r.loaded=true;
+ }catch(error){r.error=error.message;}finally{r.loading=false;if(state.view==='reports')render();}
+}
+function exportReport(){
+ const r=state.report;if(!r.loaded||!r.rows.length)return;
+ const columns=reportColumns[r.type],separator=',';
+ const csvCell=value=>{
+  let result=String(value??'');
+  // Prevent Excel CSV formula injection from untrusted free-text names and notes.
+  if(/^[=+@-]/.test(result.trimStart()))result="'"+result;
+  return '"'+result.replace(/"/g,'""')+'"';
+ };
+ const header=columns.map(([,label])=>csvCell(tx(label))).join(separator);
+ const data=r.rows.map(x=>columns.map(([key])=>csvCell(x[key])).join(separator));
+ const blob=new Blob(['\\uFEFF'+[header,...data].join('\\r\\n')],{type:'text/csv;charset=utf-8'});
+ const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+ anchor.href=url;anchor.download='HH_Warehouse_'+r.type+'_'+today()+'.csv';
+ document.body.append(anchor);anchor.click();anchor.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 function cell(x,key){
  const value=x[key];
@@ -382,10 +458,12 @@ async function save(event){
  }catch(error){toast(error.message,true);}
 }
 document.addEventListener('click',async e=>{
- const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort=state.view==='employees'?'contractor':'sku';state.descending=false;state.page=1;state.search='';$('#search').value='';render();return;}
+ const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort=state.view==='employees'?'contractor':'sku';state.descending=false;state.page=1;state.search='';$('#search').value='';render();if(state.view==='reports'&&!state.report.loaded)loadReport();return;}
  const action=e.target.closest('[data-action]');if(!action)return;
  const t=action.dataset.action,v=action.dataset.value;
  if(t==='previous-page'){state.page=Math.max(1,state.page-1);render();return;}
+ if(t==='load-report'){await loadReport();return;}
+ if(t==='export-report'){exportReport();return;}
  if(t==='next-page'){state.page++;render();return;}
  if(t==='dismiss'){$('#modal-host').innerHTML='';return;}
  if(t==='view'){state.view=v;render();return;}
@@ -456,6 +534,13 @@ $('#logout').addEventListener('click',async()=>{
  location.reload();
 });
 $('#search').addEventListener('input',e=>{state.search=e.target.value;state.page=1;render();});
+$('#page-content').addEventListener('change',event=>{
+ if(event.target.id==='report-type'){
+  state.report.type=event.target.value;
+  state.report.loaded=false;state.report.rows=[];state.report.error='';
+  render();loadReport();
+ }
+});
 $('#zoom-in').addEventListener('click',()=>changeZoom(10));
 $('#zoom-out').addEventListener('click',()=>changeZoom(-10));
 $('#zoom-value').addEventListener('click',()=>{state.zoom=100;render();});
