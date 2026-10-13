@@ -301,8 +301,8 @@ function exportReport(){
   return '"'+result.replace(/"/g,'""')+'"';
  };
  const header=columns.map(([,label])=>csvCell(tx(label))).join(separator);
- const data=r.rows.map(x=>columns.map(([key])=>csvCell(x[key])).join(separator));
- const blob=new Blob(['\\uFEFF'+[header,...data].join('\\r\\n')],{type:'text/csv;charset=utf-8'});
+ const data=r.rows.map(x=>columns.map(([key])=>csvCell(key==='critical'?(x.critical?tx('Critical'):tx('Available')):key==='kind'?tx(x[key]):x[key])).join(separator));
+ const blob=new Blob(['\uFEFF'+[header,...data].join('\r\n')],{type:'text/csv;charset=utf-8'});
  const url=URL.createObjectURL(blob),anchor=document.createElement('a');
  anchor.href=url;anchor.download='HH_Warehouse_'+r.type+'_'+today()+'.csv';
  document.body.append(anchor);anchor.click();anchor.remove();
