@@ -1,11 +1,11 @@
 // HH Warehouse Register — official deployment configuration.
 // This frontend is public; keep only non-secret Microsoft application identifiers.
-// Deployment remains in maintenance until persistent storage, backup,
-// Microsoft authorization and independent administrator are verified.
+// Official launch enabled after permanent GitHub storage, weekly backup restore,
+// Microsoft authorization and separate admin secret checks passed.
 window.warehouseConfig = {
  apiUrl: 'https://hh-warehouse-api.onrender.com',
  productionMode: true,
- launchReady: false,
+ launchReady: true,
  testPinMode: false,
  microsoftEnabled: true,
  adminLoginEnabled: true,
