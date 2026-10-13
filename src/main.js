@@ -313,19 +313,51 @@ document.addEventListener('click',async e=>{
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee'].includes(t))modal(t,v);
 });
 $('#login-demo').addEventListener('click',beginDemo);
-$('#login-microsoft').addEventListener('click',async()=>{try{
- if(cfg.testPinMode){
-  const pin=$('#test-pin').value;
-  if(!pin)throw new Error('Enter the access code');
-  const response=await fetch((cfg.apiUrl.endsWith('/')?cfg.apiUrl.slice(0,-1):cfg.apiUrl)+'/api/auth/test-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error||'Authorization failed');
-  state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
-  $('#test-pin').value='';await connect();return;
+$('#login-microsoft').addEventListener('click',async()=>{
+ const button=$('#login-microsoft');
+ if(button.disabled)return;
+ button.disabled=true;
+ const previousLabel=button.textContent;
+ button.textContent='Connecting…';
+ const status=$('#login-status');
+ try{
+  if(cfg.testPinMode){
+   const pin=$('#test-pin').value.trim();
+   if(!pin)throw new Error('Enter the test access code.');
+   status.textContent='Connecting to the warehouse test server. The first start can take up to one minute…';
+   const controller=new AbortController();
+   const timeout=setTimeout(()=>controller.abort(),90000);
+   let response;
+   try{
+    response=await fetch((cfg.apiUrl.endsWith('/')?cfg.apiUrl.slice(0,-1):cfg.apiUrl)+'/api/auth/test-login',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),signal:controller.signal
+    });
+   }finally{clearTimeout(timeout);}
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(data.error||'Access code was not accepted (HTTP '+response.status+').');
+   if(!data.token)throw new Error('The test server did not return a session. Try again.');
+   status.textContent='Code accepted. Loading imported inventory and history…';
+   state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
+   $('#test-pin').value='';
+   await connect();
+   return;
+  }
+  const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
+  state.account=login.account;
+  status.textContent='Loading warehouse data…';
+  await connect();
+ }catch(e){
+  const message=e.name==='AbortError'
+    ?'Connection timed out. The test server may be starting; please try again.'
+    :/Failed to fetch|NetworkError|network request failed/i.test(e.message)
+      ?'Cannot reach the test API. Please retry, or report this connection error.'
+      :e.message;
+  status.textContent=message;
+  status.setAttribute('role','alert');
+ }finally{
+  button.disabled=false;button.textContent=previousLabel;
  }
- const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
- state.account=login.account;await connect();
-}catch(e){$('#login-status').textContent=e.message;}});
+});
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
 $('#logout').addEventListener('click',async()=>{
  if(cfg.testPinMode){
