@@ -18,7 +18,7 @@ test('Warehouse module entry shows a progress view until SSO and data resolve',(
  assert.match(html,/dataset\.moduleSso='pending'/);
  assert.match(styles,/html\[data-module-sso="pending"\] \.hh-module-loading/);
  assert.match(app,/document\.documentElement\.removeAttribute\('data-module-sso'\)/);
- assert.match(html,/href="\/hh-logo\.svg"/);
+ assert.match(html,/src="\/hh-logo\.svg"/);
 });
 
 test('Warehouse Microsoft bootstrap uses single silent token acquisition',()=>{
