@@ -1,6 +1,10 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'PRODUCTION':'РАБОЧАЯ ВЕРСИЯ',
+  'The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.':'Официальная версия Warehouse Register готовится к запуску. Для активации необходимо проверить постоянное хранилище, резервные копии и доступ пользователей.',
+  'Microsoft login is not configured for this application.':'Корпоративная авторизация Microsoft пока не настроена.',
+
   'Calculating rental charges…':'Расчёт стоимости аренды…',
   'Choose a project and closing date.':'Выберите проект и дату закрытия.',
   'Monthly closing preview':'Предварительный расчёт закрытия месяца',
