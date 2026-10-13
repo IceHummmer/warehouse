@@ -1,6 +1,13 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'Sign out?':'Выйти из учётной записи?',
+  'Do you want to sign out of Warehouse Register?':'Вы хотите выйти из Реестра склада?',
+  'Account options':'Настройки учётной записи',
+  'Microsoft account':'Учётная запись Microsoft',
+  'User':'Пользователь',
+  'Administrator transfer failed. Sign in as administrator:':'Переход под администратором не удался. Войдите с паролем администратора:',
+  'Administrator transfer unavailable:':'Не удалось перейти под администратором:',
   'Connecting to Warehouse Register…':'Подключение к Реестру склада…',
   'Checking Microsoft 365 access and loading inventory.':'Проверка доступа Microsoft 365 и загрузка склада.',
   'Module':'Модуль',
