@@ -203,7 +203,7 @@ function cols(){
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
  projects:[['name','Project']],employees:[['contractor','Contractor'],['name','Employee']],
- users:[['email','Email'],['role','Role'],['disabled','Access status'],['_actions','Actions']],
+ users:[['email','Email'],['roles','Roles'],['disabled','Access status'],['_actions','Actions']],
  history:[['created_at','Date & time'],['actor','User'],['entity','Entity'],['entity_id','Record'],['field','Field'],['before_value','Before'],['after_value','After'],['detail','Details']],
  system:[['created_at','Date & time'],['severity','Type'],['subject','Subject'],['details','Details'],['_actions','Actions']]
  };
@@ -218,7 +218,7 @@ function rows(){
  case 'rentals':return d.rentals;
  case 'projects':return d.projects;
  case 'employees':return d.employees;
- case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',disabled:false,isBootstrap:true})),...state.members];
+ case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',roles:['admin'],disabled:false,isBootstrap:true})),...state.members];
  case 'warehouse-history':return d.movements.filter(x=>x.historical);
  case 'history':return d.history;
  case 'system':return d.messages||[];
@@ -370,6 +370,7 @@ function cell(x,key){
  if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(tx(value==='low'?'low':value==='ok'?'ok':value))+'</span>';
  if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost'||key==='original_total_cost')return money(value);
  if(key==='created_at')return value?new Date(value).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI'):'';
+ if(key==='roles')return esc((Array.isArray(value)&&value.length?value:[x.role]).map(role=>tx(role)).join(' · '));
  if(key==='rate_unit'||key==='severity'||key==='entity'||key==='field'||key==='role')return esc(tx(value));
  if(key==='disabled')return esc(tx(value?'Disabled':'Active'));
  if(key==='started_on'||key==='issued_on'||key==='returned_on')return esc(fullDate(value));
@@ -380,7 +381,7 @@ const selectField=(name,label,values,selected)=>'<label class="field"><span>'+es
 const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' ('+tx('Available')+': '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
  let title='',content='',note='',record=null;
- const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',disabled:false}:null);
+ const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',roles:['admin'],disabled:false}:null);
  const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name}));
  if(type==='item'||type==='edit'){
   title=type==='edit'?'Edit item':'Create inventory item';record=type==='edit'?item:null;
@@ -403,7 +404,11 @@ function modal(type,value=''){
  if(type==='member'||type==='member-edit'){
   title=type==='member'?'Add warehouse user':'Edit warehouse user';
   content=field('email','Account email','email',member?.email||'',type==='member-edit'?'readonly':'')+
-    selectField('role','User role',[{id:'viewer',label:tx('viewer')},{id:'operator',label:tx('operator')},{id:'admin',label:tx('admin')}],member?.role||'viewer')+
+    '<fieldset class="role-checklist"><legend>'+esc(tx('User roles'))+'</legend>'+
+    [{id:'viewer',label:'viewer'},{id:'operator',label:'operator'},{id:'admin',label:'admin'}].map(option=>
+     '<label class="role-choice"><input type="checkbox" name="roles" value="'+option.id+'" '+
+     ((member?.roles||[member?.role||'viewer']).includes(option.id)?'checked':'')+
+     '><span>'+esc(tx(option.label))+'</span></label>').join('')+'</fieldset>'+
     (type==='member-edit'?selectField('disabled','Account status',[{id:'false',label:tx('Enabled')},{id:'true',label:tx('Disabled (no access)')}],String(member?.disabled||false)):'');
   note=tx('Only approved Microsoft Entra accounts can access this production system.');
  }
@@ -529,7 +534,12 @@ function demoMutation(type,b,value){
 function nextDate(s){const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
 async function save(event){
  event.preventDefault();const form=event.currentTarget,type=form.dataset.type,value=form.dataset.record;
- const b=Object.fromEntries(new FormData(form).entries());
+ const formData=new FormData(form);const b=Object.fromEntries(formData.entries());
+ if(type==='member'||type==='member-edit'){
+  b.roles=formData.getAll('roles');
+  if(!b.roles.length){toast('Select at least one role.',true);return;}
+  delete b.role;
+ }
  try{
   if(type==='rent'||type==='issue'){
    const employee=state.data.employees.find(x=>x.id===b.employee_id);
