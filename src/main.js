@@ -143,6 +143,7 @@ async function initMicrosoft(){
   $('#test-pin').closest('label').classList.add('hidden');
   $('#login-microsoft').disabled=true;
   $('#login-microsoft').classList.add('hidden');
+  document.documentElement.removeAttribute('data-module-sso');
   $('#login-corporate').classList.add('hidden');
   $('#admin-login-toggle').classList.add('hidden');
   $('#admin-login-form').classList.add('hidden');
@@ -192,6 +193,7 @@ async function initMicrosoft(){
    }
    if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
   }else if(!cfg.testPinMode){
+   document.documentElement.removeAttribute('data-module-sso');
    setLoginStatus('Microsoft login is not configured for this application.');
    $('#login-microsoft').disabled=true;
    return;
@@ -229,7 +231,9 @@ async function connect(){
  }
  state.user=data.user;state.data=data;state.demo=false;
  document.documentElement.removeAttribute('data-module-sso');
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');
+ void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
+ $('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
 }
 async function api(path,body,method='GET'){
@@ -796,4 +800,4 @@ $('#page-content').addEventListener('pointerdown',e=>{
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
 });
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-initMicrosoft().catch(e=>{setLoginStatus('Microsoft sign-in not ready: '+e.message);});
+initMicrosoft().catch(e=>{document.documentElement.removeAttribute('data-module-sso');setLoginStatus('Microsoft sign-in not ready: '+e.message);});
