@@ -9,7 +9,7 @@
  <link rel="apple-touch-icon" href="/pwa/hh-icon-192.png"/>
  <title>HH Warehouse Register</title>
  <script src="/config.js"></script>
- <script>if(new URLSearchParams(location.search).has('auto_sso')||new URLSearchParams(location.hash.slice(1)).has('code'))document.documentElement.dataset.moduleSso='pending';</script>
+ <script>if(new URLSearchParams(location.search).has('auto_sso')||(new URLSearchParams(location.hash.slice(1)).has('code')||new URLSearchParams(location.hash.slice(1)).has('hh_admin_transfer')))document.documentElement.dataset.moduleSso='pending';</script>
 </head>
 <body>
  <section id="landing" class="landing">
