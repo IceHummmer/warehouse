@@ -317,7 +317,7 @@ $('#login-microsoft').addEventListener('click',async()=>{try{
  if(cfg.testPinMode){
   const pin=$('#test-pin').value;
   if(!pin)throw new Error('Enter the access code');
-  const response=await fetch(cfg.apiUrl.replace(/\\/$/,'')+'/api/auth/test-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
+  const response=await fetch((cfg.apiUrl.endsWith('/')?cfg.apiUrl.slice(0,-1):cfg.apiUrl)+'/api/auth/test-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Authorization failed');
   state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
