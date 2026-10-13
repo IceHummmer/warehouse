@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+ <meta name="theme-color" content="#785d42"/>
+ <meta name="application-name" content="HH Warehouse Register"/>
+ <link rel="manifest" href="/manifest.webmanifest"/>
+ <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+ <title>HH Warehouse Register</title>
+ <script src="/config.js"></script>
+</head>
+<body>
+ <section id="landing" class="landing">
+  <div class="login-card">
+   <div class="eyebrow">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div>
+   <div class="brand-lockup"><span class="logo-mark">H</span><h1>Warehouse Register</h1></div>
+   <p>Inventory, materials, tools, project assignments and rentals in one workspace.</p>
+   <div id="login-status" class="muted">This test version can be opened with demonstration data.</div>
+   <div class="login-actions">
+    <button class="button primary" id="login-microsoft">Sign in with Microsoft 365</button>
+    <button class="button outline" id="login-demo">Explore demo version</button>
+   </div>
+   <small class="muted">Demo data is synthetic and resets when the page is reloaded. No production inventory is used.</small>
+  </div>
+ </section>
+ <div id="shell" class="shell hidden">
+  <header class="topbar">
+   <div class="top-brand"><span class="logo-mark small">H</span><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
+   <div class="top-actions"><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><button class="button outline compact" id="logout">Sign out</button></div>
+  </header>
+  <main>
+   <section class="overview">
+    <div><div class="eyebrow">WAREHOUSE CONTROL</div><h2 id="view-title">Dashboard</h2><p id="view-description">Inventory and project supply overview.</p></div>
+    <div id="summary" class="stats"></div>
+   </section>
+   <div id="demo-warning" class="demo-warning hidden"><strong>Demo workspace:</strong> sample data only. Changes are temporary and are never written to the warehouse database.</div>
+   <nav id="tabs" class="tabs" aria-label="Warehouse sections">
+    <button data-view="dashboard" class="tab active">Dashboard</button>
+    <button data-view="inventory" class="tab">Inventory</button>
+    <button data-view="receipts" class="tab">Stock Receipts</button>
+    <button data-view="issues" class="tab">Issued Materials</button>
+    <button data-view="rentals" class="tab">Rentals</button>
+    <button data-view="projects" class="tab">Projects</button>
+    <button data-view="employees" class="tab">Employees</button>
+    <button data-view="history" class="tab">Change History</button>
+    <button data-view="system" class="tab admin-only">System messages <span id="unread-count" class="count hidden">0</span></button>
+   </nav>
+   <section class="workspace">
+    <div class="toolbar">
+     <div id="primary-actions" class="action-group"></div>
+     <div class="table-tools">
+      <label class="searchbox"><span>Search</span><input id="search" type="search" placeholder="SKU, name, project, employee…"/></label>
+      <button id="reset-width" class="icon-button" title="Reset column widths">↔</button>
+      <button id="zoom-out" class="icon-button" title="Zoom out">−</button>
+      <button id="zoom-value" class="icon-button" title="Reset zoom">100%</button>
+      <button id="zoom-in" class="icon-button" title="Zoom in">+</button>
+      <button id="fullscreen" class="icon-button" title="Fullscreen table">⛶</button>
+     </div>
+    </div>
+    <div id="page-content" class="content"></div>
+   </section>
+  </main>
+  <footer>HH Warehouse Register · Test Version 0.1 · All times displayed in local time</footer>
+ </div>
+ <div id="modal-host"></div><div id="toast" class="toast hidden" role="status"></div>
+ <script type="module" src="/src/main.js"></script>
+</body>
+</html>
