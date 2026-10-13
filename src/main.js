@@ -23,6 +23,30 @@ const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const id=()=>crypto.randomUUID();
 const fullDate=x=>x?String(x).slice(0,10):'';
 const options=(list,selected)=>list.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===selected?'selected':'')+'>'+esc(x.label||x.name)+'</option>').join('');
+// A few historical workbook rows do not specify a contractor/category.
+// Keep those records selectable under a visibly marked group instead of hiding them.
+const missingGroup='__hh_unassigned__';
+const groupKey=value=>String(value??'').trim()||missingGroup;
+const contractorOptions=()=>[...new Set(state.data.employees.map(x=>groupKey(x.contractor)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?'Contractor not specified':k}));
+const categoryOptions=kind=>[...new Set(state.data.items.filter(x=>x.kind===kind).map(x=>groupKey(x.category)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?'Uncategorized':k}));
+const filterSelectField=(name,label,values,placeholder)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required><option value="">'+esc(placeholder)+'</option>'+options(values)+'</select></label>';
+const dependentSelectField=(name,label,placeholder)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required disabled><option value="">'+esc(placeholder)+'</option></select></label>';
+function attachIssueFilters(form,kind){
+ const bind=(sourceName,targetName,prompt,getList)=>{
+  const source=form.elements.namedItem(sourceName),target=form.elements.namedItem(targetName);
+  const refresh=()=>{
+   const group=source.value,matching=group?getList(group):[];
+   target.innerHTML='<option value="">'+esc(!group?prompt:matching.length?'Select '+(targetName==='item_id'?'an item':'an employee'):'No matching records')+'</option>'+options(matching);
+   target.disabled=!group||!matching.length;
+   target.value=''; // never retain an item/employee after changing the parent selection
+  };
+  source.addEventListener('change',refresh);
+  refresh();
+ };
+ bind('category','item_id','Choose a category first',group=>itemOptions(kind).filter(o=>groupKey(state.data.items.find(x=>x.id===o.id)?.category)===group).sort((a,b)=>a.label.localeCompare(b.label)));
+ bind('contractor','employee_id','Choose a contractor first',group=>state.data.employees.filter(x=>groupKey(x.contractor)===group).sort((a,b)=>a.name.localeCompare(b.name)).map(x=>({id:x.id,label:x.name})));
+}
+
 function toast(message,bad=false){const n=$('#toast');n.textContent=message;n.className='toast'+(bad?' error':'');setTimeout(()=>n.classList.add('hidden'),4500);}
 function fakeData(){
  const projects=['Demo Project A','Demo Project B','Demo Project C'].map(name=>({id:id(),name}));
@@ -88,7 +112,7 @@ function cols(){
  receipts:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['unit_cost','Unit price'],['note','Document / note'],['actor','User']],
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
- projects:[['name','Project']],employees:[['name','Employee'],['contractor','Contractor']],
+ projects:[['name','Project']],employees:[['contractor','Contractor'],['name','Employee']],
  history:[['created_at','Date & time'],['actor','User'],['entity','Entity'],['entity_id','Record'],['field','Field'],['before_value','Before'],['after_value','After'],['detail','Details']],
  system:[['created_at','Date & time'],['severity','Type'],['subject','Subject'],['details','Details'],['_actions','Actions']]
  };
@@ -137,7 +161,7 @@ function render(){
  $('#unread-count').textContent=count;$('#unread-count').classList.toggle('hidden',!count);
  if(state.view==='dashboard'){$('#page-content').innerHTML=dashboard();return;}
  const columns=cols(), q=state.search.toLowerCase(),found=rows().filter(x=>JSON.stringify(x).toLowerCase().includes(q));
- found.sort((a,b)=>{const x=a[state.sort],y=b[state.sort];const c=typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),undefined,{numeric:true});return state.descending?-c:c;});
+ found.sort((a,b)=>{const x=a[state.sort],y=b[state.sort];const c=typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),undefined,{numeric:true});if(c===0&&state.view==='employees')return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true});return state.descending?-c:c;});
  const widths=JSON.parse(localStorage.getItem('hh-wh-widths-'+state.view)||'{}');
  const headers=columns.map(([key,label])=>'<th data-sort="'+esc(key)+'" style="width:'+esc(widths[key]||'auto')+'"><div class="heading">'+esc(label)+(state.sort===key?(state.descending?' ↓':' ↑'):'')+'<span class="grip" data-grip="'+esc(key)+'"></span></div></th>').join('');
  const pageSize=125,totalPages=Math.max(1,Math.ceil(found.length/pageSize));state.page=Math.max(1,Math.min(totalPages,state.page));
@@ -177,7 +201,7 @@ const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x
 function modal(type,value=''){
  let title='',content='',note='',record=null;
  const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value);
- const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name})), employeeOpt=state.data.employees.map(x=>({id:x.id,label:x.name}));
+ const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name}));
  if(type==='item'||type==='edit'){
   title=type==='edit'?'Edit item':'Create inventory item';record=type==='edit'?item:null;
   content=field('sku','SKU','text',record?.sku||'',type==='edit'?'readonly':'')+field('name','Item name','text',record?.name||'')+field('category','Category','text',record?.category||'Equipment')+
@@ -189,16 +213,17 @@ function modal(type,value=''){
   field('replacement_cost','Replacement cost, EUR','number',record?.replacement_cost||0,'min="0" step="0.01"');
  }
  if(type==='receipt'){title='Receive stock';content=selectField('item_id','Item',itemOptions(),item?.id)+field('quantity','Quantity','number',1,'min="1" step="1"')+field('unit_cost','Purchase price per unit, EUR','number',0,'min="0" step="0.01"')+field('note','Document / note','text','');}
- if(type==='issue'){title='Issue consumable material';content=selectField('item_id','Consumable item',itemOptions('consumable'))+selectField('project_id','Project',projectOpt)+selectField('employee_id','Employee',employeeOpt)+field('quantity','Quantity','number',1,'min="1" step="1"')+field('note','Note','text','');}
- if(type==='rent'){title='Rent equipment';content=selectField('item_id','Rental equipment',itemOptions('rental'))+selectField('project_id','Project',projectOpt)+selectField('employee_id','Employee',employeeOpt)+field('quantity','Quantity','number',1,'min="1" step="1"')+field('started_on','Issue date','date',today());note='Rental rate is captured when equipment is issued. Closing uses the captured historical rate.';}
+ if(type==='issue'){title='Issue consumable material';content=filterSelectField('category','Category',categoryOptions('consumable'),'Select category')+dependentSelectField('item_id','Consumable item','Choose a category first')+selectField('project_id','Project',projectOpt)+filterSelectField('contractor','Contractor',contractorOptions(),'Select contractor')+dependentSelectField('employee_id','Employee','Choose a contractor first')+field('quantity','Quantity','number',1,'min="1" step="1"')+field('note','Note','text','');}
+ if(type==='rent'){title='Rent equipment';content=filterSelectField('category','Category',categoryOptions('rental'),'Select category')+dependentSelectField('item_id','Rental equipment','Choose a category first')+selectField('project_id','Project',projectOpt)+filterSelectField('contractor','Contractor',contractorOptions(),'Select contractor')+dependentSelectField('employee_id','Employee','Choose a contractor first')+field('quantity','Quantity','number',1,'min="1" step="1"')+field('started_on','Issue date','date',today());note='Select a category to see its equipment, and a contractor to see only their employees. The rate is fixed at the time of issue.';}
  if(type==='close'){title='Close rental — '+(rental?.item_name||'');content=field('closed_on','Return / loss date','date',today())+selectField('status','Condition',[{id:'returned',label:'Returned'},{id:'lost',label:'Lost / broken'}],'returned')+field('note','Reason / note','text','');note='Closes the full quantity: '+esc(rental?.quantity)+'. Partial return is not available in v1.';}
  if(type==='monthly'){title='Monthly rental closing';const end=new Date();end.setMonth(end.getMonth()+1,0);const through=end.toISOString().slice(0,10);content=selectField('project_id','Project',projectOpt)+field('through','Closing date (month end)','date',through);note='Bills all active project rentals through the selected last day of a month, without changing their physical stock.';}
  if(type==='adjust'){title='Correct stock (administrator)';content=selectField('item_id','Item',itemOptions(),item?.id)+field('total_qty','New total quantity','number',item?.total_qty??0,'min="0" step="1"')+field('reason','Reason for adjustment','text','');note='Adjustments are recorded in Change History.';}
  if(type==='project'){title='Add project';content=field('name','Project name');}
- if(type==='employee'){title='Add employee';content=field('name','Employee name')+field('contractor','Contractor','text','');}
+ if(type==='employee'){title='Add employee';content=field('contractor','Contractor','text','')+field('name','Employee name');}
  if(!content){toast('No action available',true);return;}
  $('#modal-host').innerHTML='<div class="modal-screen" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="modal-head"><h3>'+esc(title)+'</h3><button class="icon-button" data-action="dismiss" aria-label="Close">×</button></div><form id="record-form" data-type="'+esc(type)+'" data-record="'+esc(value)+'"><div class="modal-body">'+(note?'<div class="note">'+note+'</div>':'')+'<div class="fields">'+content+'</div></div><div class="modal-footer"><button type="button" class="button" data-action="dismiss">Cancel</button><button type="submit" class="button primary">Save changes</button></div></form></section></div>';
  $('#record-form').addEventListener('submit',save);
+ if(type==='rent'||type==='issue')attachIssueFilters($('#record-form'),type==='rent'?'rental':'consumable');
 }
 function dateISO(value){return String(value||'').slice(0,10);}
 function amount(kind,rate,qty,start,end){
@@ -283,6 +308,12 @@ async function save(event){
  event.preventDefault();const form=event.currentTarget,type=form.dataset.type,value=form.dataset.record;
  const b=Object.fromEntries(new FormData(form).entries());
  try{
+  if(type==='rent'||type==='issue'){
+   const employee=state.data.employees.find(x=>x.id===b.employee_id);
+   const item=state.data.items.find(x=>x.id===b.item_id);
+   if(!employee||groupKey(employee.contractor)!==b.contractor)throw new Error('Select an employee from the chosen contractor.');
+   if(!item||groupKey(item.category)!==b.category||item.kind!==(type==='rent'?'rental':'consumable'))throw new Error('Select an item from the chosen category.');
+  }
   if(state.demo){demoMutation(type,b,value);}
   else{
    const routes={item:['/api/items','POST'],edit:['/api/items/'+value,'PATCH'],receipt:['/api/stock/receipt','POST'],issue:['/api/stock/issue','POST'],rent:['/api/rentals','POST'],close:['/api/rentals/'+value+'/close','POST'],monthly:['/api/rentals/monthly-close','POST'],adjust:['/api/stock/adjust','POST'],project:['/api/projects','POST'],employee:['/api/employees','POST']};
@@ -298,7 +329,7 @@ async function save(event){
  }catch(error){toast(error.message,true);}
 }
 document.addEventListener('click',async e=>{
- const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort='sku';state.page=1;state.search='';$('#search').value='';render();return;}
+ const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort=state.view==='employees'?'contractor':'sku';state.descending=false;state.page=1;state.search='';$('#search').value='';render();return;}
  const action=e.target.closest('[data-action]');if(!action)return;
  const t=action.dataset.action,v=action.dataset.value;
  if(t==='previous-page'){state.page=Math.max(1,state.page-1);render();return;}
