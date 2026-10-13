@@ -1,4 +1,5 @@
 import './style.css';
+import releaseInfo from '../version.json';
 import {t as tx, getLanguage, setLanguage, localizeError} from './i18n.js';
 import {PublicClientApplication} from '@azure/msal-browser';
 const $=(sel,root=document)=>root.querySelector(sel);
@@ -714,8 +715,8 @@ $('#login-demo').addEventListener('click',beginDemo);
   $(languageSelect)?.addEventListener('change',event=>chooseLanguage(event.target.value));
  }
  refreshStaticLanguage();
-void fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
- .then(d=>{if(/^\d+\.\d+\.\d+$/.test(d?.version||'')){const el=document.querySelector('[data-hh-version]');if(el)el.textContent='v'+d.version;}}).catch(()=>{});
+const hhVersion=document.querySelector('[data-hh-version]');
+if(hhVersion)hhVersion.textContent='v'+releaseInfo.version;
 $('#admin-login-toggle').addEventListener('click',()=>{
  const form=$('#admin-login-form'),show=form.classList.contains('hidden');
  form.classList.toggle('hidden',!show);
