@@ -19,6 +19,14 @@
    <div class="login-actions">
     <label class="field"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
     <button class="button primary" id="login-microsoft" data-i18n="Open test warehouse">Open test warehouse</button>
+    <button class="button outline hidden" id="login-corporate" type="button" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
+    <button class="button outline hidden" id="admin-login-toggle" type="button" data-i18n="Administrator login">Administrator login</button>
+    <form id="admin-login-form" class="admin-login-form hidden" autocomplete="off">
+      <div class="muted" data-i18n="Emergency administrator access">Emergency administrator access</div>
+      <label class="field"><span data-i18n="Administrator username">Administrator username</span><input type="text" name="username" value="admin" readonly autocomplete="username"/></label>
+      <label class="field"><span data-i18n="Administrator password">Administrator password</span><input type="password" name="password" autocomplete="current-password" minlength="14" maxlength="256" required /></label>
+      <button type="submit" id="admin-login-submit" class="button primary" data-i18n="Sign in as administrator">Sign in as administrator</button>
+    </form>
     <button class="button outline hidden" id="login-demo" disabled data-i18n="Demo disabled">Demo disabled</button>
    </div>
    <small class="muted" data-i18n="This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.">This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.</small>
