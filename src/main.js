@@ -13,10 +13,10 @@ function setLoginStatus(message){
 }
 function refreshStaticLanguage(){
  document.documentElement.lang=getLanguage();
- $('[data-i18n]').forEach(el=>{el.textContent=localizeError(el.dataset.i18n);});
- $('[data-i18n-placeholder]').forEach(el=>el.placeholder=tx(el.dataset.i18nPlaceholder));
- $('[data-i18n-title]').forEach(el=>el.title=tx(el.dataset.i18nTitle));
- $('[data-i18n-aria-label]').forEach(el=>el.setAttribute('aria-label',tx(el.dataset.i18nAriaLabel)));
+ document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=localizeError(el.dataset.i18n);});
+ document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>el.placeholder=tx(el.dataset.i18nPlaceholder));
+ document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=tx(el.dataset.i18nTitle));
+ document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>el.setAttribute('aria-label',tx(el.dataset.i18nAriaLabel)));
  for(const id of ['#language-select','#login-language-select']){
   const field=$(id);
   if(field)field.value=getLanguage();
