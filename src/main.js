@@ -142,7 +142,7 @@ async function initMicrosoft(){
    $('#test-pin').focus();return;
  }
  if(!cfg.tenantId||!cfg.clientId||!cfg.apiScope){setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');$('#login-microsoft').disabled=true;return;}
- state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}});
+ state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin+'/'},cache:{cacheLocation:'sessionStorage'}});
  await state.client.initialize();
  const accounts=state.client.getAllAccounts();
  if(accounts.length){state.account=accounts[0];try{await connect();}catch(e){setLoginStatus(e.message);}}
@@ -341,7 +341,7 @@ function cell(x,key){
   if(state.view==='inventory')return '<div class="row-actions"><button class="mini" data-action="edit" data-value="'+esc(x.id)+'">'+esc(tx('Edit'))+'</button><button class="mini" data-action="receipt" data-value="'+esc(x.id)+'">'+esc(tx('Receive'))+'</button></div>';
   if(state.view==='rentals'&&x.status==='active')return '<button class="mini" data-action="close" data-value="'+esc(x.id)+'">'+esc(tx('Close rental'))+'</button>';
   if(state.view==='system'&&!x.is_read)return '<button class="mini" data-action="read" data-value="'+esc(x.id)+'">'+esc(tx('Mark read'))+'</button>';
-  if(state.view==='users'&&!x.isBootstrap)return '<button class="mini" data-action="member-edit" data-value="'+esc(x.email)+'">'+esc(tx('Edit'))+'</button>';
+  if(state.view==='users')return '<button class="mini" data-action="member-edit" data-value="'+esc(x.email)+'">'+esc(tx('Edit'))+'</button>';
   return '';
  }
  if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(tx(value==='low'?'low':value==='ok'?'ok':value))+'</span>';
@@ -357,7 +357,7 @@ const selectField=(name,label,values,selected)=>'<label class="field"><span>'+es
 const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' ('+tx('Available')+': '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
  let title='',content='',note='',record=null;
- const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value);
+ const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',disabled:false}:null);
  const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name}));
  if(type==='item'||type==='edit'){
   title=type==='edit'?'Edit item':'Create inventory item';record=type==='edit'?item:null;
