@@ -1,8 +1,8 @@
-// PUBLIC settings only — never place credentials or secrets here.
-// Populate the test environment's Microsoft Entra app/API IDs before deployment.
+// PUBLIC configuration: no passwords or PIN hashes belong here.
 window.warehouseConfig = {
-  apiUrl: 'http://localhost:8787',
-  tenantId: '',
-  clientId: '',
-  apiScope: ''
+ apiUrl: 'https://hh-warehouse-api-test.onrender.com',
+ testPinMode: true,
+ tenantId: '',
+ clientId: '',
+ apiScope: ''
 };
