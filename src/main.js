@@ -11,11 +11,12 @@ const pages={
  rentals:['Rentals','Active rentals, closed rentals and monthly billing periods.'],
  projects:['Projects','Warehouse project directory. Independent from Project Register.'],
  employees:['Employees','Staff and contractor directory.'],
- history:['Change History','All recorded data changes and stock activity.'],
+ 'warehouse-history':['Warehouse History','Imported issue, receipt, return and rental billing operations from the Excel workbook.'],
+ history:['Change History','Changes made in the new warehouse application.'],
  system:['System messages','Administrative messages and operational warnings.']
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
-const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null};
+const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1};
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString('en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -43,6 +44,12 @@ function fakeData(){
  return {items,projects,employees,rentals:rents,movements:[],history:[],periods:[],messages:[]};
 }
 async function initMicrosoft(){
+ if(cfg.testPinMode){
+   const t=sessionStorage.getItem('hhWarehouseTestToken');
+   if(t){state.token=t;try{await connect();return;}catch(e){sessionStorage.removeItem('hhWarehouseTestToken');state.token=null;}}
+   $('#login-status').textContent='Enter the test access code to view warehouse data.';
+   $('#test-pin').focus();return;
+ }
  if(!cfg.tenantId||!cfg.clientId||!cfg.apiScope){$('#login-status').textContent='Microsoft login is not configured for this test. Explore the interactive demo.';$('#login-microsoft').disabled=true;return;}
  state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}});
  await state.client.initialize();
@@ -50,14 +57,13 @@ async function initMicrosoft(){
  if(accounts.length){state.account=accounts[0];try{await connect();}catch(e){$('#login-status').textContent=e.message;}}
 }
 async function connect(){
- const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});
- state.token=result.accessToken;
+ if(!cfg.testPinMode){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
  const data=await api('/api/bootstrap');
  if(data.user.role==='admin'){
    try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
  }
  state.user=data.user;state.data=data;state.demo=false;
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent='LIVE TEST';$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.add('hidden');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=cfg.testPinMode?'EXCEL TEST':'LIVE TEST';$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
 }
 async function api(path,body,method='GET'){
@@ -78,6 +84,7 @@ function cols(){
  const inventory=[['sku','SKU'],['name','Item'],['category','Category'],['kind','Type'],['total_qty','Total'],['rented_qty','Rented'],['available_qty','Available'],['critical_qty','Critical'],['rental_rate','Rental rate'],['status','Stock status'],['_actions','Actions']];
  const map={
  inventory,
+ 'warehouse-history':[['issued_on','Issued on'],['returned_on','Returned on'],['sku','SKU'],['item_name','Item'],['kind','Movement'],['legacy_status','Excel status'],['project_name','Project'],['employee_name','Employee'],['quantity','Quantity'],['original_total_cost','Amount'],['source_row','Excel row']],
  receipts:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['unit_cost','Unit price'],['note','Document / note'],['actor','User']],
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
@@ -96,6 +103,7 @@ function rows(){
  case 'rentals':return d.rentals;
  case 'projects':return d.projects;
  case 'employees':return d.employees;
+ case 'warehouse-history':return d.movements.filter(x=>x.historical);
  case 'history':return d.history;
  case 'system':return d.messages||[];
  default:return [];
@@ -132,8 +140,10 @@ function render(){
  found.sort((a,b)=>{const x=a[state.sort],y=b[state.sort];const c=typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),undefined,{numeric:true});return state.descending?-c:c;});
  const widths=JSON.parse(localStorage.getItem('hh-wh-widths-'+state.view)||'{}');
  const headers=columns.map(([key,label])=>'<th data-sort="'+esc(key)+'" style="width:'+esc(widths[key]||'auto')+'"><div class="heading">'+esc(label)+(state.sort===key?(state.descending?' ↓':' ↑'):'')+'<span class="grip" data-grip="'+esc(key)+'"></span></div></th>').join('');
- const dataRows=found.map(x=>'<tr>'+columns.map(([key])=>'<td>'+cell(x,key)+'</td>').join('')+'</tr>').join('');
- $('#page-content').innerHTML='<div class="table-scroller"><table class="data-table" style="--zoom-font:'+Math.round(12*state.zoom/100)+'px"><thead><tr>'+headers+'</tr></thead><tbody>'+dataRows+'</tbody></table>'+(found.length?'':'<div class="empty"><h3>No records found</h3><p>Use the actions above to add data or change the search.</p></div>')+'</div>';
+ const pageSize=125,totalPages=Math.max(1,Math.ceil(found.length/pageSize));state.page=Math.max(1,Math.min(totalPages,state.page));
+ const visible=found.slice((state.page-1)*pageSize,state.page*pageSize);
+ const dataRows=visible.map(x=>'<tr>'+columns.map(([key])=>'<td>'+cell(x,key)+'</td>').join('')+'</tr>').join('');
+ $('#page-content').innerHTML='<div class="table-scroller"><table class="data-table" style="--zoom-font:'+Math.round(12*state.zoom/100)+'px"><thead><tr>'+headers+'</tr></thead><tbody>'+dataRows+'</tbody></table>'+(found.length?'':'<div class="empty"><h3>No records found</h3><p>Use the actions above to add data or change the search.</p></div>')+'</div><div class="paging">'+found.length+' records · Page '+state.page+' of '+totalPages+' <button class="mini" data-action="previous-page" '+(state.page<=1?'disabled':'')+'>← Previous</button><button class="mini" data-action="next-page" '+(state.page>=totalPages?'disabled':'')+'>Next →</button></div>';
 }
 function dashboard(){
  const d=state.data, low=d.items.filter(x=>x.total_qty<x.critical_qty);
@@ -156,9 +166,9 @@ function cell(x,key){
   return '';
  }
  if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(value==='low'?'Critical':value==='ok'?'Available':value)+'</span>';
- if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost')return money(value);
+ if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost'||key==='original_total_cost')return money(value);
  if(key==='created_at')return value?new Date(value).toLocaleString('en-FI'):'';
- if(key==='started_on')return esc(fullDate(value));
+ if(key==='started_on'||key==='issued_on'||key==='returned_on')return esc(fullDate(value));
  return esc(value);
 }
 const field=(name,label,type='text',value='',extra='')=>'<label class="field"><span>'+esc(label)+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" '+extra+( ['note','contractor'].includes(name)?'':' required')+' /></label>';
@@ -288,9 +298,11 @@ async function save(event){
  }catch(error){toast(error.message,true);}
 }
 document.addEventListener('click',async e=>{
- const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort='sku';state.search='';$('#search').value='';render();return;}
+ const tab=e.target.closest('[data-view]');if(tab){state.view=tab.dataset.view;state.sort='sku';state.page=1;state.search='';$('#search').value='';render();return;}
  const action=e.target.closest('[data-action]');if(!action)return;
  const t=action.dataset.action,v=action.dataset.value;
+ if(t==='previous-page'){state.page=Math.max(1,state.page-1);render();return;}
+ if(t==='next-page'){state.page++;render();return;}
  if(t==='dismiss'){$('#modal-host').innerHTML='';return;}
  if(t==='view'){state.view=v;render();return;}
  if(t==='read'){
@@ -302,11 +314,28 @@ document.addEventListener('click',async e=>{
 });
 $('#login-demo').addEventListener('click',beginDemo);
 $('#login-microsoft').addEventListener('click',async()=>{try{
+ if(cfg.testPinMode){
+  const pin=$('#test-pin').value;
+  if(!pin)throw new Error('Enter the access code');
+  const response=await fetch(cfg.apiUrl.replace(/\\/$/,'')+'/api/auth/test-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Authorization failed');
+  state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
+  $('#test-pin').value='';await connect();return;
+ }
  const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
  state.account=login.account;await connect();
 }catch(e){$('#login-status').textContent=e.message;}});
-$('#logout').addEventListener('click',async()=>{if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});location.reload();});
-$('#search').addEventListener('input',e=>{state.search=e.target.value;render();});
+$('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
+$('#logout').addEventListener('click',async()=>{
+ if(cfg.testPinMode){
+  try{await api('/api/auth/logout',{},'POST');}catch{}
+  sessionStorage.removeItem('hhWarehouseTestToken');location.reload();return;
+ }
+ if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
+ location.reload();
+});
+$('#search').addEventListener('input',e=>{state.search=e.target.value;state.page=1;render();});
 $('#zoom-in').addEventListener('click',()=>changeZoom(10));
 $('#zoom-out').addEventListener('click',()=>changeZoom(-10));
 $('#zoom-value').addEventListener('click',()=>{state.zoom=100;render();});
@@ -317,7 +346,7 @@ $('#page-content').addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault()
 $('#page-content').addEventListener('click',e=>{
  if(e.target.closest('.grip'))return;
  const th=e.target.closest('th[data-sort]');if(!th||th.dataset.sort==='_actions')return;
- state.descending=state.sort===th.dataset.sort?!state.descending:false;state.sort=th.dataset.sort;render();
+ state.descending=state.sort===th.dataset.sort?!state.descending:false;state.sort=th.dataset.sort;state.page=1;render();
 });
 $('#page-content').addEventListener('pointerdown',e=>{
  const grip=e.target.closest('.grip');if(!grip)return;e.preventDefault();
