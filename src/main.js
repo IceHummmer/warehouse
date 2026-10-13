@@ -53,6 +53,9 @@ async function connect(){
  const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});
  state.token=result.accessToken;
  const data=await api('/api/bootstrap');
+ if(data.user.role==='admin'){
+   try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
+ }
  state.user=data.user;state.data=data;state.demo=false;
  $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent='LIVE TEST';$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.add('hidden');
  render();
@@ -64,7 +67,7 @@ async function api(path,body,method='GET'){
  if(!response.ok)throw new Error(data.error||'Operation failed');
  return data;
 }
-async function reload(){if(!state.demo)state.data=await api('/api/bootstrap');render();}
+async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}}render();}
 function beginDemo(){
  state.demo=true;state.user={email:'Demo administrator',role:'admin'};state.data=fakeData();
  $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent='DEMO';$('#mode-label').className='tag';$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
@@ -158,7 +161,7 @@ function cell(x,key){
  if(key==='started_on')return esc(fullDate(value));
  return esc(value);
 }
-const field=(name,label,type='text',value='',extra='')=>'<label class="field"><span>'+esc(label)+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" '+extra+' required /></label>';
+const field=(name,label,type='text',value='',extra='')=>'<label class="field"><span>'+esc(label)+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" '+extra+( ['note','contractor'].includes(name)?'':' required')+' /></label>';
 const selectField=(name,label,values,selected)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required>'+options(values,selected)+'</select></label>';
 const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' (available '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
@@ -208,6 +211,7 @@ function demoMutation(type,b,value){
  if(type==='edit'){
   if(!item)throw new Error('Item unavailable');
   for(const key of ['name','category','critical_qty','rental_unit','rental_rate','replacement_cost']){
+   if(key==='rental_unit'&&item.kind==='consumable')continue;
    const next=['critical_qty','rental_rate','replacement_cost'].includes(key)?Number(b[key]):b[key];
    if(String(item[key]??'')!==String(next??'')){demoAudit('item',item.id,key,item[key],next);item[key]=next;}
   }item.revision++;return;
@@ -272,7 +276,11 @@ async function save(event){
   if(state.demo){demoMutation(type,b,value);}
   else{
    const routes={item:['/api/items','POST'],edit:['/api/items/'+value,'PATCH'],receipt:['/api/stock/receipt','POST'],issue:['/api/stock/issue','POST'],rent:['/api/rentals','POST'],close:['/api/rentals/'+value+'/close','POST'],monthly:['/api/rentals/monthly-close','POST'],adjust:['/api/stock/adjust','POST'],project:['/api/projects','POST'],employee:['/api/employees','POST']};
-   if(type==='edit')b.revision=state.data.items.find(x=>x.id===value)?.revision;
+   if(type==='edit'){
+     const original=state.data.items.find(x=>x.id===value);
+     b.revision=original?.revision;
+     if(original?.kind==='consumable')delete b.rental_unit;
+   }
    const route=routes[type];if(!route)throw new Error('Unknown operation');
    await api(route[0],b,route[1]);
   }
