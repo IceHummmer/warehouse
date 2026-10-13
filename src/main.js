@@ -70,7 +70,7 @@ const pages={
  system:['System messages','Administrative messages and operational warnings.']
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
-const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,members:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
+const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -135,20 +135,29 @@ async function initMicrosoft(){
   if(cfg.adminLoginEnabled)$('#admin-login-toggle').classList.remove('hidden');
   setLoginStatus('Sign in with your approved Microsoft 365 account, or use administrator access.');
  }
+ // Microsoft is available alongside the PIN only in a deliberately approved pilot.
+ if(cfg.microsoftEnabled||!cfg.testPinMode){
+  if(cfg.tenantId&&cfg.clientId&&cfg.apiScope){
+   state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin+'/'},cache:{cacheLocation:'sessionStorage'}});
+   await state.client.initialize();
+   if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
+  }else if(!cfg.testPinMode){
+   setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');
+   $('#login-microsoft').disabled=true;
+   return;
+  }
+ }
  if(cfg.testPinMode){
    const t=sessionStorage.getItem('hhWarehouseTestToken');
    if(t){state.token=t;try{await connect();return;}catch(e){sessionStorage.removeItem('hhWarehouseTestToken');state.token=null;}}
-   setLoginStatus('Enter the test access code to view warehouse data.');
+   setLoginStatus(cfg.microsoftEnabled?'Enter the test code or sign in with an approved corporate account.':'Enter the test access code to view warehouse data.');
    $('#test-pin').focus();return;
  }
- if(!cfg.tenantId||!cfg.clientId||!cfg.apiScope){setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');$('#login-microsoft').disabled=true;return;}
- state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin+'/'},cache:{cacheLocation:'sessionStorage'}});
- await state.client.initialize();
  const accounts=state.client.getAllAccounts();
- if(accounts.length){state.account=accounts[0];try{await connect();}catch(e){setLoginStatus(e.message);}}
+ if(accounts.length){state.account=accounts[0];state.microsoftSession=true;try{await connect();}catch(e){state.microsoftSession=false;setLoginStatus(e.message);}}
 }
 async function connect(){
- if(!cfg.testPinMode&&!state.adminSession){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
+ if(state.microsoftSession){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
  const data=await api('/api/bootstrap');
  if(data.user.role==='admin'){
    try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
@@ -158,7 +167,7 @@ async function connect(){
  render();
 }
 async function api(path,body,method='GET'){
- const token=state.adminSession?state.token:state.client? (await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken :state.token;
+ const token=state.microsoftSession?(await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken:state.token;
  const response=await fetch(String(cfg.apiUrl||'http://localhost:8787').replace(/\/$/,'')+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'Idempotency-Key':crypto.randomUUID()}:{})},body:body?JSON.stringify(body):undefined});
  const data=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(data.error||'Operation failed');
@@ -589,6 +598,25 @@ $('#admin-login-form').addEventListener('submit',async event=>{
   button.disabled=false;button.textContent=tx('Sign in as administrator');
  }
 });
+$('#login-corporate').addEventListener('click',async()=>{
+ const btn=$('#login-corporate');
+ if(!cfg.microsoftEnabled||!state.client||btn.disabled)return;
+ btn.disabled=true;btn.textContent=tx('Connecting…');
+ try{
+  const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
+  state.account=login.account;
+  state.microsoftSession=true;state.adminSession=false;
+  state.token=login.accessToken||null;
+  setLoginStatus('Loading warehouse data…');
+  await connect();
+ }catch(error){
+  state.microsoftSession=false;state.token=null;
+  setLoginStatus(error.message||'Microsoft sign-in failed');
+  $('#login-status').setAttribute('role','alert');
+ }finally{
+  btn.disabled=false;btn.textContent=tx('Sign in with Microsoft 365');
+ }
+});
 $('#login-microsoft').addEventListener('click',async()=>{
  const button=$('#login-microsoft');
  if(button.disabled)return;
@@ -613,13 +641,13 @@ $('#login-microsoft').addEventListener('click',async()=>{
    if(!response.ok)throw new Error(data.error||'Access code was not accepted (HTTP '+response.status+').');
    if(!data.token)throw new Error('The test server did not return a session. Try again.');
    setLoginStatus('Code accepted. Loading imported inventory and history…');
-   state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
+   state.microsoftSession=false;state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
    $('#test-pin').value='';
    await connect();
    return;
   }
   const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
-  state.account=login.account;
+  state.account=login.account;state.microsoftSession=true;
   setLoginStatus('Loading warehouse data…');
   await connect();
  }catch(e){
@@ -636,6 +664,10 @@ $('#login-microsoft').addEventListener('click',async()=>{
 });
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
 $('#logout').addEventListener('click',async()=>{
+ if(state.microsoftSession){
+  if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
+  location.reload();return;
+ }
  if(cfg.testPinMode){
   try{await api('/api/auth/logout',{},'POST');}catch{}
   sessionStorage.removeItem('hhWarehouseTestToken');location.reload();return;
