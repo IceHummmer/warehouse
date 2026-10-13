@@ -25,3 +25,13 @@ test('Warehouse Microsoft bootstrap uses single silent token acquisition',()=>{
  const connect=app.slice(app.indexOf('async function connect(){'),app.indexOf('async function reload(){'));
  assert.equal((connect.match(/acquireTokenSilent\(/g)||[]).length,1);
 });
+
+test('Official Warehouse header has live colleagues before module navigation and no Production chip',()=>{
+ const presenceIndex=html.indexOf('id="warehouseOnlineUsers"');
+ const navigationIndex=html.indexOf('id="warehouseModuleButton"');
+ assert.ok(presenceIndex>=0&&presenceIndex<navigationIndex);
+ assert.doesNotMatch(html,/id="mode-label"/);
+ assert.match(app,/refreshWarehousePresence/);
+ assert.match(styles,/\.hh-module-controls>\.other-active-users/);
+ assert.match(styles,/@media\(max-width:620px\)/);
+});
