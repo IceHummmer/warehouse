@@ -1,4 +1,5 @@
 import './style.css';
+import {t as tx, getLanguage, setLanguage, localizeError} from './i18n.js';
 import {PublicClientApplication} from '@azure/msal-browser';
 const $=(sel,root=document)=>root.querySelector(sel);
 const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
@@ -18,7 +19,7 @@ const pages={
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
 const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1};
 const today=()=>new Date().toISOString().slice(0,10);
-const money=x=>Number(x||0).toLocaleString('en-FI',{style:'currency',currency:'EUR'});
+const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const id=()=>crypto.randomUUID();
 const fullDate=x=>x?String(x).slice(0,10):'';
@@ -27,16 +28,16 @@ const options=(list,selected)=>list.map(x=>'<option value="'+esc(x.id)+'" '+(x.i
 // Keep those records selectable under a visibly marked group instead of hiding them.
 const missingGroup='__hh_unassigned__';
 const groupKey=value=>String(value??'').trim()||missingGroup;
-const contractorOptions=()=>[...new Set(state.data.employees.map(x=>groupKey(x.contractor)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?'Contractor not specified':k}));
-const categoryOptions=kind=>[...new Set(state.data.items.filter(x=>x.kind===kind).map(x=>groupKey(x.category)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?'Uncategorized':k}));
-const filterSelectField=(name,label,values,placeholder)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required><option value="">'+esc(placeholder)+'</option>'+options(values)+'</select></label>';
-const dependentSelectField=(name,label,placeholder)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required disabled><option value="">'+esc(placeholder)+'</option></select></label>';
+const contractorOptions=()=>[...new Set(state.data.employees.map(x=>groupKey(x.contractor)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?tx('Contractor not specified'):k}));
+const categoryOptions=kind=>[...new Set(state.data.items.filter(x=>x.kind===kind).map(x=>groupKey(x.category)))].sort((a,b)=>a.localeCompare(b)).map(k=>({id:k,label:k===missingGroup?tx('Uncategorized'):k}));
+const filterSelectField=(name,label,values,placeholder)=>'<label class="field"><span>'+esc(tx(label))+'</span><select name="'+esc(name)+'" required><option value="">'+esc(tx(placeholder))+'</option>'+options(values)+'</select></label>';
+const dependentSelectField=(name,label,placeholder)=>'<label class="field"><span>'+esc(tx(label))+'</span><select name="'+esc(name)+'" required disabled><option value="">'+esc(tx(placeholder))+'</option></select></label>';
 function attachIssueFilters(form,kind){
  const bind=(sourceName,targetName,prompt,getList)=>{
   const source=form.elements.namedItem(sourceName),target=form.elements.namedItem(targetName);
   const refresh=()=>{
    const group=source.value,matching=group?getList(group):[];
-   target.innerHTML='<option value="">'+esc(!group?prompt:matching.length?'Select '+(targetName==='item_id'?'an item':'an employee'):'No matching records')+'</option>'+options(matching);
+   target.innerHTML='<option value="">'+esc(tx(!group?prompt:matching.length?(targetName==='item_id'?'Select an item':'Select an employee'):'No matching records'))+'</option>'+options(matching);
    target.disabled=!group||!matching.length;
    target.value=''; // never retain an item/employee after changing the parent selection
   };
@@ -47,7 +48,7 @@ function attachIssueFilters(form,kind){
  bind('contractor','employee_id','Choose a contractor first',group=>state.data.employees.filter(x=>groupKey(x.contractor)===group).sort((a,b)=>a.name.localeCompare(b.name)).map(x=>({id:x.id,label:x.name})));
 }
 
-function toast(message,bad=false){const n=$('#toast');n.textContent=message;n.className='toast'+(bad?' error':'');setTimeout(()=>n.classList.add('hidden'),4500);}
+function toast(message,bad=false){const n=$('#toast');n.textContent=localizeError(message);n.className='toast'+(bad?' error':'');setTimeout(()=>n.classList.add('hidden'),4500);}
 function fakeData(){
  const projects=['Demo Project A','Demo Project B','Demo Project C'].map(name=>({id:id(),name}));
  const employees=[{id:id(),name:'Example Worker A',contractor:'Example Contractor'},{id:id(),name:'Example Worker B',contractor:'Example Contractor'}];
@@ -71,10 +72,10 @@ async function initMicrosoft(){
  if(cfg.testPinMode){
    const t=sessionStorage.getItem('hhWarehouseTestToken');
    if(t){state.token=t;try{await connect();return;}catch(e){sessionStorage.removeItem('hhWarehouseTestToken');state.token=null;}}
-   $('#login-status').textContent='Enter the test access code to view warehouse data.';
+   setLoginStatus('Enter the test access code to view warehouse data.');
    $('#test-pin').focus();return;
  }
- if(!cfg.tenantId||!cfg.clientId||!cfg.apiScope){$('#login-status').textContent='Microsoft login is not configured for this test. Explore the interactive demo.';$('#login-microsoft').disabled=true;return;}
+ if(!cfg.tenantId||!cfg.clientId||!cfg.apiScope){setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');$('#login-microsoft').disabled=true;return;}
  state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}});
  await state.client.initialize();
  const accounts=state.client.getAllAccounts();
@@ -87,7 +88,7 @@ async function connect(){
    try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
  }
  state.user=data.user;state.data=data;state.demo=false;
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=cfg.testPinMode?'EXCEL TEST':'LIVE TEST';$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
 }
 async function api(path,body,method='GET'){
@@ -100,7 +101,7 @@ async function api(path,body,method='GET'){
 async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}}render();}
 function beginDemo(){
  state.demo=true;state.user={email:'Demo administrator',role:'admin'};state.data=fakeData();
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent='DEMO';$('#mode-label').className='tag';$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx('DEMO');$('#mode-label').className='tag';$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
  render();
 }
 function cols(){
@@ -134,7 +135,7 @@ function rows(){
  }
 }
 function canEdit(){return ['admin','operator'].includes(state.user?.role);}
-function button(text,action,value='',extra=''){return '<button class="button '+extra+'" data-action="'+esc(action)+'" data-value="'+esc(value)+'">'+esc(text)+'</button>';}
+function button(text,action,value='',extra=''){return '<button class="button '+extra+'" data-action="'+esc(action)+'" data-value="'+esc(value)+'">'+esc(tx(text))+'</button>'; }
 function actions(){
  const v=state.view;if(!canEdit())return '';
  if(v==='inventory')return button('+ Add item','item','','primary')+button('Receive stock','receipt')+button('Issue material','issue')+button('Rent equipment','rent')+(state.user.role==='admin'?button('Adjust stock','adjust'):'');
@@ -149,12 +150,12 @@ function render(){
  if(!state.user)return;
  if(state.view==='system'&&state.user.role!=='admin')state.view='dashboard';
  const d=state.data;
- $('#view-title').textContent=pages[state.view][0];$('#view-description').textContent=pages[state.view][1];
+ $('#view-title').textContent=tx(pages[state.view][0]);$('#view-description').textContent=tx(pages[state.view][1]);
  $$('#tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.view===state.view));
  $$('.admin-only').forEach(x=>x.classList.toggle('hidden',state.user.role!=='admin'));
  const low=d.items.filter(x=>x.total_qty<x.critical_qty).length;
  const active=d.rentals.filter(x=>x.status==='active').length;
- $('#summary').innerHTML=[['Items',d.items.length],['Low stock',low],['Active rentals',active]].map(([label,value])=>'<div class="stat"><strong>'+esc(value)+'</strong><span>'+label+'</span></div>').join('');
+ $('#summary').innerHTML=[['Items',d.items.length],['Low stock',low],['Active rentals',active]].map(([label,value])=>'<div class="stat"><strong>'+esc(value)+'</strong><span>'+esc(tx(label))+'</span></div>').join('');
  $('#primary-actions').innerHTML=actions();
  $('#zoom-value').textContent=state.zoom+'%';
  const count=(d.messages||[]).filter(m=>!m.is_read).length;
@@ -163,11 +164,11 @@ function render(){
  const columns=cols(), q=state.search.toLowerCase(),found=rows().filter(x=>JSON.stringify(x).toLowerCase().includes(q));
  found.sort((a,b)=>{const x=a[state.sort],y=b[state.sort];const c=typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),undefined,{numeric:true});if(c===0&&state.view==='employees')return String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true});return state.descending?-c:c;});
  const widths=JSON.parse(localStorage.getItem('hh-wh-widths-'+state.view)||'{}');
- const headers=columns.map(([key,label])=>'<th data-sort="'+esc(key)+'" style="width:'+esc(widths[key]||'auto')+'"><div class="heading">'+esc(label)+(state.sort===key?(state.descending?' ↓':' ↑'):'')+'<span class="grip" data-grip="'+esc(key)+'"></span></div></th>').join('');
+ const headers=columns.map(([key,label])=>'<th data-sort="'+esc(key)+'" style="width:'+esc(widths[key]||'auto')+'"><div class="heading">'+esc(tx(label))+(state.sort===key?(state.descending?' ↓':' ↑'):'')+'<span class="grip" data-grip="'+esc(key)+'"></span></div></th>').join('');
  const pageSize=125,totalPages=Math.max(1,Math.ceil(found.length/pageSize));state.page=Math.max(1,Math.min(totalPages,state.page));
  const visible=found.slice((state.page-1)*pageSize,state.page*pageSize);
  const dataRows=visible.map(x=>'<tr>'+columns.map(([key])=>'<td>'+cell(x,key)+'</td>').join('')+'</tr>').join('');
- $('#page-content').innerHTML='<div class="table-scroller"><table class="data-table" style="--zoom-font:'+Math.round(12*state.zoom/100)+'px"><thead><tr>'+headers+'</tr></thead><tbody>'+dataRows+'</tbody></table>'+(found.length?'':'<div class="empty"><h3>No records found</h3><p>Use the actions above to add data or change the search.</p></div>')+'</div><div class="paging">'+found.length+' records · Page '+state.page+' of '+totalPages+' <button class="mini" data-action="previous-page" '+(state.page<=1?'disabled':'')+'>← Previous</button><button class="mini" data-action="next-page" '+(state.page>=totalPages?'disabled':'')+'>Next →</button></div>';
+ $('#page-content').innerHTML='<div class="table-scroller"><table class="data-table" style="--zoom-font:'+Math.round(12*state.zoom/100)+'px"><thead><tr>'+headers+'</tr></thead><tbody>'+dataRows+'</tbody></table>'+(found.length?'':'<div class="empty"><h3>'+esc(tx('No records found'))+'</h3><p>'+esc(tx('Use the actions above to add data or change the search.'))+'</p></div>')+'</div><div class="paging">'+found.length+' '+esc(tx('records'))+' · '+esc(tx('Page'))+' '+state.page+' '+esc(tx('of'))+' '+totalPages+' <button class="mini" data-action="previous-page" '+(state.page<=1?'disabled':'')+'>'+esc(tx('← Previous'))+'</button><button class="mini" data-action="next-page" '+(state.page>=totalPages?'disabled':'')+'>'+esc(tx('Next →'))+'</button></div>';
 }
 function dashboard(){
  const d=state.data, low=d.items.filter(x=>x.total_qty<x.critical_qty);
@@ -184,20 +185,21 @@ function cell(x,key){
  const value=x[key];
  if(key==='_actions'){
   if(!canEdit())return '';
-  if(state.view==='inventory')return '<div class="row-actions"><button class="mini" data-action="edit" data-value="'+esc(x.id)+'">Edit</button><button class="mini" data-action="receipt" data-value="'+esc(x.id)+'">Receive</button></div>';
-  if(state.view==='rentals'&&x.status==='active')return '<button class="mini" data-action="close" data-value="'+esc(x.id)+'">Close rental</button>';
-  if(state.view==='system'&&!x.is_read)return '<button class="mini" data-action="read" data-value="'+esc(x.id)+'">Mark read</button>';
+  if(state.view==='inventory')return '<div class="row-actions"><button class="mini" data-action="edit" data-value="'+esc(x.id)+'">'+esc(tx('Edit'))+'</button><button class="mini" data-action="receipt" data-value="'+esc(x.id)+'">'+esc(tx('Receive'))+'</button></div>';
+  if(state.view==='rentals'&&x.status==='active')return '<button class="mini" data-action="close" data-value="'+esc(x.id)+'">'+esc(tx('Close rental'))+'</button>';
+  if(state.view==='system'&&!x.is_read)return '<button class="mini" data-action="read" data-value="'+esc(x.id)+'">'+esc(tx('Mark read'))+'</button>';
   return '';
  }
- if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(value==='low'?'Critical':value==='ok'?'Available':value)+'</span>';
+ if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(tx(value==='low'?'low':value==='ok'?'ok':value))+'</span>';
  if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost'||key==='original_total_cost')return money(value);
- if(key==='created_at')return value?new Date(value).toLocaleString('en-FI'):'';
+ if(key==='created_at')return value?new Date(value).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI'):'';
+ if(key==='rate_unit'||key==='severity'||key==='entity'||key==='field')return esc(tx(value));
  if(key==='started_on'||key==='issued_on'||key==='returned_on')return esc(fullDate(value));
  return esc(value);
 }
-const field=(name,label,type='text',value='',extra='')=>'<label class="field"><span>'+esc(label)+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" '+extra+( ['note','contractor'].includes(name)?'':' required')+' /></label>';
-const selectField=(name,label,values,selected)=>'<label class="field"><span>'+esc(label)+'</span><select name="'+esc(name)+'" required>'+options(values,selected)+'</select></label>';
-const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' (available '+(x.total_qty-x.rented_qty)+')'}));
+const field=(name,label,type='text',value='',extra='')=>'<label class="field"><span>'+esc(tx(label))+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" '+extra+( ['note','contractor'].includes(name)?'':' required')+' /></label>';
+const selectField=(name,label,values,selected)=>'<label class="field"><span>'+esc(tx(label))+'</span><select name="'+esc(name)+'" required>'+options(['kind','status','rental_unit'].includes(name)?values.map(x=>({...x,label:tx(x.label)})):values,selected)+'</select></label>';
+const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' ('+tx('Available')+': '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
  let title='',content='',note='',record=null;
  const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value);
