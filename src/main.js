@@ -714,6 +714,8 @@ $('#login-demo').addEventListener('click',beginDemo);
   $(languageSelect)?.addEventListener('change',event=>chooseLanguage(event.target.value));
  }
  refreshStaticLanguage();
+void fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
+ .then(d=>{if(/^\\d+\\.\\d+\\.\\d+$/.test(d?.version||'')){const el=document.querySelector('[data-hh-version]');if(el)el.textContent='v'+d.version;}}).catch(()=>{});
 $('#admin-login-toggle').addEventListener('click',()=>{
  const form=$('#admin-login-form'),show=form.classList.contains('hidden');
  form.classList.toggle('hidden',!show);
@@ -819,29 +821,38 @@ $('#login-microsoft').addEventListener('click',async()=>{
  }
 });
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
-$('#logout').addEventListener('click',async()=>{
+async function logoutWarehouse(){
  if(state.microsoftSession){
-  // Match Project Register: end this application's local session without
-  // signing the user out of the whole Microsoft tenant or opening an account
-  // picker. MSAL can clear local cache without navigating to Entra sign-out.
-  try{
-   await state.client.logoutRedirect({account:state.account,onRedirectNavigate:()=>false});
-  }catch(error){console.warn('Local Microsoft cache logout:',error.message);}
+  try{await state.client.logoutRedirect({account:state.account,onRedirectNavigate:()=>false});}
+  catch(error){console.warn('Local Microsoft cache logout:',error.message);}
   state.microsoftSession=false;state.token=null;state.account=null;
   location.replace(location.pathname);return;
  }
- if(cfg.testPinMode){
-  try{await api('/api/auth/logout',{},'POST');}catch{}
-  sessionStorage.removeItem('hhWarehouseTestToken');location.reload();return;
- }
- if(state.adminSession){
+ if(state.adminSession||cfg.testPinMode){
   try{await api('/api/auth/logout',{},'POST');}catch{}
   sessionStorage.removeItem('hhWarehouseAdminToken');
-  location.reload();return;
+  sessionStorage.removeItem('hhWarehouseTestToken');
+  location.replace(location.pathname);return;
  }
- // Only the local warehouse session is ended. Never show a Microsoft picker.
  location.replace(location.pathname);
+}
+function closeWarehouseSignOut(){
+ $('#warehouseSignOutDialog').classList.add('hidden');
+}
+$('#warehouseAccountButton').addEventListener('click',()=>{
+ $('#warehouseSignOutDialog').classList.remove('hidden');
 });
+$('#warehouseSignOutClose').addEventListener('click',closeWarehouseSignOut);
+$('#warehouseSignOutCancel').addEventListener('click',closeWarehouseSignOut);
+$('#warehouseSignOutConfirm').addEventListener('click',async()=>{
+ const button=$('#warehouseSignOutConfirm');
+ button.disabled=true;
+ try{await logoutWarehouse();}finally{button.disabled=false;closeWarehouseSignOut();}
+});
+$('#warehouseSignOutDialog').addEventListener('click',event=>{
+ if(event.target.id==='warehouseSignOutDialog')closeWarehouseSignOut();
+});
+
 $('#search').addEventListener('input',e=>{state.search=e.target.value;state.page=1;render();});
 $('#page-content').addEventListener('change',event=>{
  if(event.target.id==='report-type'){
