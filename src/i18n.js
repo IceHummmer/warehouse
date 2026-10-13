@@ -1,6 +1,8 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'Access will open after the official warehouse inventory cutover is approved.':'Доступ откроется после согласования исходных складских остатков и запуска рабочей версии.',
+  'HH Warehouse Register · Official edition · All times displayed in local time':'HH Warehouse Register · Официальная версия · Время указано местное',
   'PRODUCTION':'РАБОЧАЯ ВЕРСИЯ',
   'The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.':'Официальная версия Warehouse Register готовится к запуску. Для активации необходимо проверить постоянное хранилище, резервные копии и доступ пользователей.',
   'Microsoft login is not configured for this application.':'Корпоративная авторизация Microsoft пока не настроена.',
