@@ -715,7 +715,7 @@ $('#login-demo').addEventListener('click',beginDemo);
  }
  refreshStaticLanguage();
 void fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
- .then(d=>{if(/^\\d+\\.\\d+\\.\\d+$/.test(d?.version||'')){const el=document.querySelector('[data-hh-version]');if(el)el.textContent='v'+d.version;}}).catch(()=>{});
+ .then(d=>{if(/^\d+\.\d+\.\d+$/.test(d?.version||'')){const el=document.querySelector('[data-hh-version]');if(el)el.textContent='v'+d.version;}}).catch(()=>{});
 $('#admin-login-toggle').addEventListener('click',()=>{
  const form=$('#admin-login-form'),show=form.classList.contains('hidden');
  form.classList.toggle('hidden',!show);
