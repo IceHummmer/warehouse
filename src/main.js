@@ -137,6 +137,8 @@ async function initMicrosoft(){
  if(!cfg.testPinMode){
   $('#test-pin').closest('label').classList.add('hidden');
   const loginButton=$('#login-microsoft');
+  loginButton.disabled=false;
+  loginButton.classList.remove('hidden');
   loginButton.dataset.i18n='Sign in with Microsoft 365';
   loginButton.textContent=tx('Sign in with Microsoft 365');
   const saved=cfg.adminLoginEnabled?sessionStorage.getItem('hhWarehouseAdminToken'):null;
