@@ -134,6 +134,26 @@ function fakeData(){
  return {items,projects,employees,rentals:rents,movements:[],history:[],periods:[],messages:[]};
 }
 async function initMicrosoft(){
+ const incomingTicket=new URLSearchParams(location.hash.slice(1)).get('hh_admin_transfer');
+ if(incomingTicket){
+  history.replaceState({},document.title,location.pathname+location.search);
+  document.documentElement.dataset.moduleSso='pending';
+  try{
+   const response=await fetch(new URL('/api/auth/admin-handoff/exchange',cfg.apiUrl),{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:incomingTicket})
+   });
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||!data.token)throw new Error(data.error||'Administrator transfer was rejected');
+   state.adminSession=true;state.microsoftSession=false;state.token=data.token;
+   sessionStorage.setItem('hhWarehouseAdminToken',data.token);
+   await connect();return;
+  }catch(error){
+   state.adminSession=false;state.token=null;sessionStorage.removeItem('hhWarehouseAdminToken');
+   document.documentElement.removeAttribute('data-module-sso');
+   setLoginStatus('Administrator transfer failed. Sign in as administrator: '+error.message);
+   return;
+  }
+ }
  // Official release remains read-only/inaccessible until all cutover checks pass.
  // This is only a UI maintenance state; production API separately enforces auth.
  if(cfg.productionMode&&!cfg.launchReady){
@@ -229,7 +249,7 @@ async function connect(){
  document.documentElement.removeAttribute('data-module-sso');
  $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');
  void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
- $('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ $('#warehouseAccountButton').textContent=state.adminSession?'admin':state.user.email;$('#warehouseAccountButton').title=tx('Account options');$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
  // Don't hold the entire dashboard behind the second GitHub request
  // needed to fetch administrator system messages.
@@ -284,7 +304,7 @@ async function refreshWarehousePresence(){
 async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}if(state.view==='users')await loadMembers();}render();}
 function beginDemo(){
  state.demo=true;state.user={email:'Demo administrator',role:'admin'};state.data=fakeData();
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#warehouseAccountButton').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
  render();
 }
 function cols(){
@@ -297,7 +317,7 @@ function cols(){
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
  projects:[['name','Project']],employees:[['contractor','Contractor'],['name','Employee']],
- users:[['email','Email'],['roles','Roles'],['disabled','Access status'],['_actions','Actions']],
+ users:[['name','User'],['email','Microsoft account'],['roles','Roles'],['disabled','Access status'],['_actions','Actions']],
  history:[['created_at','Date & time'],['actor','User'],['entity','Entity'],['entity_id','Record'],['field','Field'],['before_value','Before'],['after_value','After'],['detail','Details']],
  system:[['created_at','Date & time'],['severity','Type'],['subject','Subject'],['details','Details'],['_actions','Actions']]
  };
@@ -312,7 +332,7 @@ function rows(){
  case 'rentals':return d.rentals;
  case 'projects':return d.projects;
  case 'employees':return d.employees;
- case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',roles:['admin'],disabled:false,isBootstrap:true})),...state.members];
+ case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,name:email.split('@')[0],role:'admin',roles:['admin'],disabled:false,isBootstrap:true})),...state.members.map(m=>({...m,name:m.name||m.email.split('@')[0]}))];
  case 'warehouse-history':return d.movements.filter(x=>x.historical);
  case 'history':return d.history;
  case 'system':return d.messages||[];
@@ -497,7 +517,8 @@ function modal(type,value=''){
  if(type==='employee'){title='Add employee';content=field('contractor','Contractor','text','')+field('name','Employee name');}
  if(type==='member'||type==='member-edit'){
   title=type==='member'?'Add warehouse user':'Edit warehouse user';
-  content=field('email','Account email','email',member?.email||'',type==='member-edit'?'readonly':'')+
+  content=field('name','User','text',member?.name||member?.email?.split('@')[0]||'','required maxlength="120"')+
+    field('email','Microsoft account','email',member?.email||'',type==='member-edit'?'readonly':'')+
     '<fieldset class="role-checklist"><legend>'+esc(tx('User roles'))+'</legend>'+
     [{id:'viewer',label:'viewer'},{id:'operator',label:'operator'},{id:'admin',label:'admin'}].map(option=>
      '<label class="role-choice"><input type="checkbox" name="roles" value="'+option.id+'" '+
@@ -673,7 +694,18 @@ document.addEventListener('click',async e=>{
  }
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee','member','member-edit'].includes(t))modal(t,v);
 });
-$('#warehouseModuleButton').addEventListener('click',()=>{
+$('#warehouseModuleButton').addEventListener('click',async()=>{
+ const button=$('#warehouseModuleButton');
+ if(state.adminSession){
+  button.disabled=true;
+  try{
+   const result=await api('/api/auth/admin-handoff/issue',{},'POST');
+   if(!result.ticket)throw new Error('Missing administrator transfer proof');
+   window.location.assign(PROJECT_REGISTER_URL+'#hh_admin_transfer='+encodeURIComponent(result.ticket));
+  }catch(error){toast('Administrator transfer unavailable: '+error.message,true);}
+  finally{button.disabled=false;}
+  return;
+ }
  window.location.assign(PROJECT_REGISTER_URL+'?from_module=warehouse&auto_sso=1');
 });
 $('#warehouseModuleReturn').addEventListener('click',()=>window.location.assign(PROJECT_REGISTER_URL));
