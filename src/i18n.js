@@ -1,6 +1,8 @@
 // UI-only translations. Never translate item names, employee names, projects,
 // contractor names, SKU values, document notes, or historical Excel cells.
 const ru = {
+  'Connecting to Warehouse Register…':'Подключение к Реестру склада…',
+  'Checking Microsoft 365 access and loading inventory.':'Проверка доступа Microsoft 365 и загрузка склада.',
   'Module':'Модуль',
   'Warehouse Register':'Реестр склада',
   'Project Register':'Реестр проектов',

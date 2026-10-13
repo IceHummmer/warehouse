@@ -9,6 +9,7 @@ const WAREHOUSE_REGISTER_URL='https://hh-warehouse.onrender.com/';
 const incomingFromProjects=new URL(location.href).searchParams.get('from_module')==='projects';
 const autoModuleSso=incomingFromProjects&&new URL(location.href).searchParams.get('auto_sso')==='1';
 const showWarehouseDenied=()=>{
+ document.documentElement.removeAttribute('data-module-sso');
  $('#warehouseModuleDenied').classList.remove('hidden');
  $('#landing').classList.remove('hidden');
  $('#shell').classList.add('hidden');
@@ -142,6 +143,7 @@ async function initMicrosoft(){
   $('#test-pin').closest('label').classList.add('hidden');
   $('#login-microsoft').disabled=true;
   $('#login-microsoft').classList.add('hidden');
+  document.documentElement.removeAttribute('data-module-sso');
   $('#login-corporate').classList.add('hidden');
   $('#admin-login-toggle').classList.add('hidden');
   $('#admin-login-form').classList.add('hidden');
@@ -173,6 +175,7 @@ async function initMicrosoft(){
    catch(error){
     // Silently reusing Microsoft from the other registry can need consent
     // or explicit interaction. Never loop on prompt=none failures.
+    document.documentElement.removeAttribute('data-module-sso');
     setLoginStatus(error.message||'Microsoft sign-in failed');
     // An SSO interaction error is not a permissions denial; manual sign-in remains available.
     return;
@@ -180,10 +183,17 @@ async function initMicrosoft(){
    if(redirectResult?.account){
     state.account=redirectResult.account;state.microsoftSession=true;
     try{await connect();return;}
-    catch(error){state.microsoftSession=false;setLoginStatus(error.message);if(error.status===403)showWarehouseDenied();return;}
+    catch(error){
+     state.microsoftSession=false;
+     document.documentElement.removeAttribute('data-module-sso');
+     setLoginStatus(error.message);
+     if(error.status===403)showWarehouseDenied();
+     return;
+    }
    }
    if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
   }else if(!cfg.testPinMode){
+   document.documentElement.removeAttribute('data-module-sso');
    setLoginStatus('Microsoft login is not configured for this application.');
    $('#login-microsoft').disabled=true;
    return;
@@ -199,24 +209,31 @@ async function initMicrosoft(){
  if(accounts.length){
   state.account=accounts[0];state.microsoftSession=true;
   try{await connect();return;}
-  catch(error){state.microsoftSession=false;setLoginStatus(error.message);if(error.status===403){showWarehouseDenied();return;}}
+  catch(error){
+   state.microsoftSession=false;document.documentElement.removeAttribute('data-module-sso');
+   setLoginStatus(error.message);if(error.status===403){showWarehouseDenied();return;}
+  }
  }
  if(autoModuleSso&&!state.adminSession){
   // MSAL obtains its own Warehouse-scoped token via Microsoft SSO.
   // No Project Register cookies or tokens are shared with Warehouse.
   history.replaceState({},document.title,location.pathname);
   try{await state.client.loginRedirect({scopes:[cfg.apiScope],prompt:'none'});}
-  catch(error){setLoginStatus(error.message||'Microsoft sign-in failed');}
+  catch(error){document.documentElement.removeAttribute('data-module-sso');setLoginStatus(error.message||'Microsoft sign-in failed');}
  }
 }
 async function connect(){
- if(state.microsoftSession){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
+ // The authenticated API helper acquires the token; do not repeat the same
+ // token acquisition before the large inventory bootstrap.
  const data=await api('/api/bootstrap');
  if(data.user.role==='admin'){
    try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
  }
  state.user=data.user;state.data=data;state.demo=false;
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ document.documentElement.removeAttribute('data-module-sso');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');
+ void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
+ $('#mode-label').textContent=tx(cfg.productionMode?'PRODUCTION':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
 }
 async function api(path,body,method='GET'){
@@ -618,9 +635,8 @@ document.addEventListener('click',async e=>{
  }
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee','member','member-edit'].includes(t))modal(t,v);
 });
-$('#warehouse-module-select').addEventListener('change',event=>{
- if(event.target.value==='projects')window.location.assign(PROJECT_REGISTER_URL+'?from_module=warehouse&auto_sso=1');
- event.target.value='warehouse';
+$('#warehouseModuleButton').addEventListener('click',()=>{
+ window.location.assign(PROJECT_REGISTER_URL+'?from_module=warehouse&auto_sso=1');
 });
 $('#warehouseModuleReturn').addEventListener('click',()=>window.location.assign(PROJECT_REGISTER_URL));
 $('#login-demo').addEventListener('click',beginDemo);
@@ -784,4 +800,4 @@ $('#page-content').addEventListener('pointerdown',e=>{
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
 });
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-initMicrosoft().catch(e=>{setLoginStatus('Microsoft sign-in not ready: '+e.message);});
+initMicrosoft().catch(e=>{document.documentElement.removeAttribute('data-module-sso');setLoginStatus('Microsoft sign-in not ready: '+e.message);});

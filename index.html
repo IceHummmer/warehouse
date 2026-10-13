@@ -8,6 +8,7 @@
  <link rel="icon" href="/hh-logo.svg" type="image/svg+xml"/>
  <title>HH Warehouse Register</title>
  <script src="/config.js"></script>
+ <script>if(new URLSearchParams(location.search).has('auto_sso')||new URLSearchParams(location.hash.slice(1)).has('code'))document.documentElement.dataset.moduleSso='pending';</script>
 </head>
 <body>
  <section id="landing" class="landing">
@@ -34,13 +35,21 @@
     </form>
     <button class="button outline hidden" id="login-demo" disabled data-i18n="Demo disabled">Demo disabled</button>
    </div>
-   <small class="muted" data-i18n="Access will open after the official warehouse inventory cutover is approved.">Access will open after the official warehouse inventory cutover is approved.</small>
+   <small class="muted">Helsingin Hitsaus</small>
   </div>
  </section>
+ <div id="moduleLoading" class="hh-module-loading" role="status" aria-live="polite">
+   <div class="hh-module-loading-card">
+     <img class="hh-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus"/>
+     <div class="hh-module-loading-title" data-i18n="Connecting to Warehouse Register…">Connecting to Warehouse Register…</div>
+     <div class="hh-module-loading-spinner" aria-hidden="true"></div>
+     <p data-i18n="Checking Microsoft 365 access and loading inventory.">Checking Microsoft 365 access and loading inventory.</p>
+   </div>
+ </div>
  <div id="shell" class="shell hidden">
   <header class="topbar">
    <div class="top-brand"><img class="hh-logo header-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
-   <div class="top-actions"><label class="module-switch" for="warehouse-module-select"><span data-i18n="Module">Module</span><select id="warehouse-module-select" aria-label="Module"><option value="warehouse" data-i18n="Warehouse Register">Warehouse Register</option><option value="projects" data-i18n="Project Register">Project Register</option></select></label><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
+   <div class="top-actions"><button id="warehouseModuleButton" type="button" class="button outline hh-module-button"><span data-i18n="Project Register">Project Register</span> <span aria-hidden="true">→</span></button><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
   </header>
   <main>
    <section class="overview">
