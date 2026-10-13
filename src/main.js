@@ -62,7 +62,7 @@ async function connect(){
 }
 async function api(path,body,method='GET'){
  const token=state.client? (await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken :state.token;
- const response=await fetch(String(cfg.apiUrl||'http://localhost:8787').replace(/\/$/,'')+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+ const response=await fetch(String(cfg.apiUrl||'http://localhost:8787').replace(/\/$/,'')+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'Idempotency-Key':crypto.randomUUID()}:{})},body:body?JSON.stringify(body):undefined});
  const data=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(data.error||'Operation failed');
  return data;
