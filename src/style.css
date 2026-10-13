@@ -150,3 +150,12 @@ html[data-module-sso="pending"] .hh-module-loading{display:grid}
  .top-actions>.language-control{flex:0 0 auto}
  .top-actions>#logout{flex:0 0 auto}
 }
+
+/* HH unified account action, modal and semver footer */
+.top-actions>.hh-account-button{max-width:235px;min-height:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.hh-signout-modal{width:min(420px,calc(100vw - 32px))}
+.hh-signout-modal .modal-body{padding:12px 24px 20px;color:#6b6258;line-height:1.5;font-size:13px}
+.hh-signout-modal .modal-footer{padding-top:16px}
+.hh-copyright{text-align:center;color:#9c8e80;font-size:11px;letter-spacing:.03em;padding:18px 12px 24px}
+.hh-copyright [data-hh-version]{font-variant-numeric:tabular-nums;font-weight:700;color:#80654d}
+@media(max-width:620px){.top-actions>.hh-account-button{margin-left:auto;max-width:48%;min-width:0;font-size:11px;padding:7px 10px}}
