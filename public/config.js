@@ -3,6 +3,8 @@
 window.warehouseConfig = {
  apiUrl: 'https://hh-warehouse-api-test.onrender.com',
  testPinMode: true,
+ // Microsoft corporate pilot shares this URL with test PIN access; pilot users are allowlisted server-side.
+ microsoftEnabled: true,
  // Enable only on the approved production frontend when ADMIN_PASSWORD_SCRYPT is set server-side.
  adminLoginEnabled: false,
  tenantId: '02bec730-845f-46db-aec9-f469f4992917',
