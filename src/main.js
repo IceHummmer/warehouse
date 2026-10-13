@@ -4,6 +4,57 @@ import {PublicClientApplication} from '@azure/msal-browser';
 const $=(sel,root=document)=>root.querySelector(sel);
 const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const cfg=window.warehouseConfig||{};
+// The language belongs to the viewer, never to warehouse records.
+// Save and restore any open form values while translating its chrome.
+function setLoginStatus(message){
+ const el=$('#login-status');
+ el.dataset.i18n=String(message);
+ el.textContent=localizeError(message);
+}
+function refreshStaticLanguage(){
+ document.documentElement.lang=getLanguage();
+ $('[data-i18n]').forEach(el=>{el.textContent=localizeError(el.dataset.i18n);});
+ $('[data-i18n-placeholder]').forEach(el=>el.placeholder=tx(el.dataset.i18nPlaceholder));
+ $('[data-i18n-title]').forEach(el=>el.title=tx(el.dataset.i18nTitle));
+ $('[data-i18n-aria-label]').forEach(el=>el.setAttribute('aria-label',tx(el.dataset.i18nAriaLabel)));
+ for(const id of ['#language-select','#login-language-select']){
+  const field=$(id);
+  if(field)field.value=getLanguage();
+ }
+}
+function chooseLanguage(language){
+ if(!['en','ru'].includes(language)||getLanguage()===language)return;
+ const form=$('#record-form');
+ const snapshot=form?{
+  type:form.dataset.type,
+  record:form.dataset.record,
+  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name).map(el=>[el.name,el.value]))
+ }:null;
+ setLanguage(language);
+ refreshStaticLanguage();
+ if(state.user){
+  $('#mode-label').textContent=tx(state.demo?'DEMO':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');
+  render();
+ }
+ if(snapshot){
+  modal(snapshot.type,snapshot.record);
+  const fresh=$('#record-form');
+  if(fresh){
+   for(const key of ['category','contractor']){
+    const field=fresh.elements.namedItem(key);
+    if(field&&Object.hasOwn(snapshot.values,key)){
+     field.value=snapshot.values[key];
+     field.dispatchEvent(new Event('change'));
+    }
+   }
+   for(const [name,value] of Object.entries(snapshot.values)){
+    if(name==='category'||name==='contractor')continue;
+    const field=fresh.elements.namedItem(name);
+    if(field)field.value=value;
+   }
+  }
+ }
+}
 const pages={
  dashboard:['Dashboard','Inventory and project supply overview.'],
  inventory:['Inventory','Catalogue, total stock, available equipment and critical levels.'],
@@ -79,7 +130,7 @@ async function initMicrosoft(){
  state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin},cache:{cacheLocation:'sessionStorage'}});
  await state.client.initialize();
  const accounts=state.client.getAllAccounts();
- if(accounts.length){state.account=accounts[0];try{await connect();}catch(e){$('#login-status').textContent=e.message;}}
+ if(accounts.length){state.account=accounts[0];try{await connect();}catch(e){setLoginStatus(e.message);}}
 }
 async function connect(){
  if(!cfg.testPinMode){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
@@ -346,18 +397,22 @@ document.addEventListener('click',async e=>{
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee'].includes(t))modal(t,v);
 });
 $('#login-demo').addEventListener('click',beginDemo);
+ for(const languageSelect of ['#language-select','#login-language-select']){
+  $(languageSelect)?.addEventListener('change',event=>chooseLanguage(event.target.value));
+ }
+ refreshStaticLanguage();
 $('#login-microsoft').addEventListener('click',async()=>{
  const button=$('#login-microsoft');
  if(button.disabled)return;
  button.disabled=true;
- const previousLabel=button.textContent;
- button.textContent='Connecting…';
+ 
+ button.textContent=tx('Connecting…');
  const status=$('#login-status');
  try{
   if(cfg.testPinMode){
    const pin=$('#test-pin').value.trim();
    if(!pin)throw new Error('Enter the test access code.');
-   status.textContent='Connecting to the warehouse test server. The first start can take up to one minute…';
+   setLoginStatus('Connecting to the warehouse test server. The first start can take up to one minute…');
    const controller=new AbortController();
    const timeout=setTimeout(()=>controller.abort(),90000);
    let response;
@@ -369,7 +424,7 @@ $('#login-microsoft').addEventListener('click',async()=>{
    const data=await response.json().catch(()=>({}));
    if(!response.ok)throw new Error(data.error||'Access code was not accepted (HTTP '+response.status+').');
    if(!data.token)throw new Error('The test server did not return a session. Try again.');
-   status.textContent='Code accepted. Loading imported inventory and history…';
+   setLoginStatus('Code accepted. Loading imported inventory and history…');
    state.token=data.token;sessionStorage.setItem('hhWarehouseTestToken',data.token);
    $('#test-pin').value='';
    await connect();
@@ -377,7 +432,7 @@ $('#login-microsoft').addEventListener('click',async()=>{
   }
   const login=await state.client.loginPopup({scopes:[cfg.apiScope]});
   state.account=login.account;
-  status.textContent='Loading warehouse data…';
+  setLoginStatus('Loading warehouse data…');
   await connect();
  }catch(e){
   const message=e.name==='AbortError'
@@ -385,10 +440,10 @@ $('#login-microsoft').addEventListener('click',async()=>{
     :/Failed to fetch|NetworkError|network request failed/i.test(e.message)
       ?'Cannot reach the test API. Please retry, or report this connection error.'
       :e.message;
-  status.textContent=message;
+  setLoginStatus(message);
   status.setAttribute('role','alert');
  }finally{
-  button.disabled=false;button.textContent=previousLabel;
+  button.disabled=false;button.textContent=tx(cfg.testPinMode?'Open test warehouse':'Sign in with Microsoft 365');
  }
 });
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
@@ -421,4 +476,4 @@ $('#page-content').addEventListener('pointerdown',e=>{
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
 });
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-initMicrosoft().catch(e=>{$('#login-status').textContent='Microsoft sign-in not ready: '+e.message;});
+initMicrosoft().catch(e=>{setLoginStatus('Microsoft sign-in not ready: '+e.message);});
