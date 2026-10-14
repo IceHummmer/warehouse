@@ -11,6 +11,10 @@ test('switching between Russian and English translates only interface labels',()
  assert.equal(t('Issue date'),'Дата выдачи');
  assert.equal(t('Rental equipment'),'Арендуемое оборудование');
  assert.equal(t('Sign out'),'Выйти');
+ assert.equal(t('Module'),'Модуль');
+ assert.equal(t('Project Register'),'Реестр проектов');
+ assert.equal(t('User roles'),'Роли пользователя');
+ assert.equal(t('No access to Warehouse Register'),'Нет доступа к Реестру склада');
  assert.equal(t('Critical total quantity'),'Критический остаток (по общему количеству)');
  // Original workbook and user-entered names must remain byte-for-byte identical.
  for(const original of ['FEHU OU','IPPON OU','PPE-007','CMK 3.0','Сварочный аппарат Kemppi','Иван Иванов','Original equipment name']){
