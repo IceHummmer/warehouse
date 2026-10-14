@@ -13,6 +13,6 @@ test('Warehouse desktop app PWA has same branded HH icon sizes',()=>{
   assert.equal(png.readUInt32BE(20),Number(icon.sizes.split('x')[1]));
  }
  const html=read('index.html').toString('utf8');
- assert.match(html,/href="\/favicon\.svg\?v=hh-icon-2"/);
- assert.match(html,/href="\/manifest\.webmanifest\?v=hh-icon-2"/);
+ assert.match(html,/href="\/favicon\.svg\?v=hh-ios-3"/);
+ assert.match(html,/href="\/manifest\.webmanifest\?v=hh-ios-3"/);
 });
