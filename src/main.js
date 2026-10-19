@@ -1,4 +1,5 @@
 import './style.css';
+import {createRenderUsageWidget} from './render-usage-widget.js';
 import releaseInfo from '../version.json';
 import {t as tx, getLanguage, setLanguage, localizeError} from './i18n.js';
 import {PublicClientApplication} from '@azure/msal-browser';
@@ -84,6 +85,11 @@ const pages={
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
 const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],onlineUsers:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
+const renderUsageWidget=createRenderUsageWidget({
+ isAdmin:()=>Boolean(state.user?.role==='admin'&&!state.demo),
+ language:getLanguage,
+ request:(method,body)=>api('/api/admin/render-usage',body,method)
+});
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -252,6 +258,7 @@ async function connect(){
  void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
  $('#warehouseAccountButton').textContent=state.adminSession?'admin':state.user.email;$('#warehouseAccountButton').title=tx('Account options');$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
+ if(isAdmin)void renderUsageWidget.load();
  // Don't hold the entire dashboard behind the second GitHub request
  // needed to fetch administrator system messages.
  if(isAdmin)void api('/api/system-messages').then(result=>{
@@ -356,6 +363,7 @@ function actions(){
 function render(){
  if(!state.user)return;
  if(['system','users'].includes(state.view)&&state.user.role!=='admin')state.view='dashboard';
+ renderUsageWidget.render();
  const d=state.data;
  $('#view-title').textContent=tx(pages[state.view][0]);$('#view-description').textContent=tx(pages[state.view][1]);
  $$('#tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.view===state.view));
