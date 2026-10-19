@@ -26,3 +26,162 @@
 
 .admin-login-form{display:grid;gap:12px;padding:14px;background:#faf5ef;border:1px solid #e3d5c7;border-radius:10px;margin:2px 0}
 .admin-login-form .muted{font-size:12px}.admin-login-form .button{width:100%}
+
+/* Shared HH design system - mirrors Project Register tokens and control sizing. */
+:root{
+ --bg:#f5f7f8;--surface:#ffffff;--ink:#15232d;--muted:#6d7b86;
+ --line:#d8e0e6;--accent:#7a5a3a;--accent-2:#936c45;
+ --danger:#b42318;--shadow:0 14px 40px rgba(60,43,30,.10);--radius:16px;
+ color:var(--ink);background:var(--bg);
+}
+body{color:var(--ink);background:linear-gradient(180deg,#fffdfa 0,#f7f4f0 220px,#f5f3f0 100%)}
+.hh-logo{display:block;object-fit:contain;flex-shrink:0}
+.hh-logo.login-logo{height:74px;width:57px}
+.hh-logo.header-logo{height:52px;width:40px}
+.logo-mark{display:none}
+.shell{max-width:1700px;margin:0 auto;padding:0 28px 40px}
+.topbar{background:transparent;border-bottom:1px solid #dfe5e9;padding:22px 0 12px;min-height:86px;margin-bottom:16px}
+main{max-width:none;padding:0}
+.top-brand{gap:14px}
+.top-brand strong{font-size:30px;letter-spacing:-.04em}
+.top-brand .eyebrow{font-size:11px;letter-spacing:.14em;color:#80654d}
+.overview{
+ background:linear-gradient(135deg,#3b2d23 0%,#74583f 100%);
+ border:1px solid rgba(255,255,255,.08);color:white;
+ padding:30px 32px;border-radius:22px;box-shadow:0 18px 44px rgba(57,39,25,.14);
+ margin-bottom:14px
+}
+.overview .eyebrow{color:#e6cfb7}
+.overview h2{font-size:32px;letter-spacing:-.04em}
+.overview p{color:#e8ddd3}
+.stat{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.16);border-radius:14px}
+.stat strong{font-size:25px;color:white}
+.stat span{color:#dfd0c2}
+.tabs{gap:4px;border-bottom:0;margin:20px 0 10px;padding-bottom:3px;overflow-x:auto}
+.tab{font-size:12px;font-weight:750;border-radius:9px;white-space:nowrap;padding:10px 13px}
+.tab.active{background:#fffaf5;color:#6b4b31;box-shadow:0 3px 10px rgba(74,51,34,.08)}
+.tab.active:after{display:none}
+.tab:hover{background:#f1ebe5;color:var(--ink)}
+.workspace{background:#fffdfa;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);min-height:420px}
+.toolbar{min-height:68px;border-bottom:1px solid var(--line);padding:14px 16px}
+.button{min-height:38px;border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:0 14px;font-weight:650;box-shadow:0 1px 1px rgba(0,0,0,.02);background:var(--surface)}
+.button.primary{background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 4px 12px rgba(122,90,58,.18)}
+.button.primary:hover:not(:disabled){background:var(--accent-2)}
+.button:hover:not(:disabled){border-color:#b9c3cd;transform:translateY(-1px)}
+.data-table{font-size:var(--zoom-font,12px)}
+.data-table th{background:#f7f3ef;color:#5e5147;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.data-table th .heading{min-height:36px;padding:11px 10px}
+.data-table td{padding:9px 10px;border-bottom:1px solid #edf0f2;color:var(--ink)}
+.data-table tr:hover td{background:#fbf8f4}
+.searchbox input,.field input,.field select,.field textarea{border-color:var(--line);border-radius:9px;outline-color:var(--accent)}
+.searchbox input{padding:9px 11px}
+.icon-button{min-height:38px;border-color:var(--line);border-radius:9px}
+.modal{width:min(96vw,980px);max-height:94vh;border-radius:18px;box-shadow:0 28px 90px rgba(0,0,0,.24)}
+.modal-head{padding:22px 24px;border-bottom:0}
+.modal-head h3{font-size:23px}
+.modal-body{padding:8px 24px 22px}
+.modal-footer{padding:16px 24px 22px;border-top:1px solid var(--line)}
+.fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px}
+.field{color:#50606d;font-size:11px;font-weight:750}
+.field input,.field select,.field textarea{min-height:39px;padding:9px 10px}
+.login-card{border-radius:18px;box-shadow:0 14px 40px rgba(60,43,30,.1)}
+.brand-lockup{gap:15px}
+.brand-lockup h1{font-size:30px}
+.module-switch{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px;font-weight:700;color:var(--muted)}
+.module-switch select{height:38px;min-width:175px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-weight:700}
+.role-checklist{grid-column:1/-1;border:1px solid var(--line);border-radius:11px;padding:12px;display:flex;flex-wrap:wrap;gap:12px 18px}
+.role-checklist legend{font-size:12px;font-weight:750;color:var(--muted);padding:0 6px}
+.role-choice{display:flex;align-items:center;gap:8px;font-weight:650;font-size:12px;cursor:pointer}
+.role-choice input{width:16px;height:16px;accent-color:var(--accent)}
+.module-access-denied{background:#fff2ee;border:1px solid #f2c1b7;color:#752e20;border-radius:12px;padding:16px;margin:14px 0}
+.module-access-denied p{line-height:1.55;font-size:12px}
+.module-access-denied .button{margin-top:5px}
+@media(max-width:950px){.shell{padding:0 16px 30px}.overview{flex-direction:column;align-items:stretch}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.top-brand strong{font-size:25px}}
+@media(max-width:620px){.shell{padding:0 13px 20px}.topbar{gap:12px}.top-brand strong{font-size:20px}.overview{padding:20px}.fields{grid-template-columns:1fr}.module-switch select{min-width:150px}.hh-logo.header-logo{height:45px;width:34px}}
+
+/* HH shared login/header v2 — identical proportions across registers. */
+.login-card{width:min(470px,100%);padding:42px;border:1px solid #e4ded5;border-radius:18px;background:#fff;box-shadow:0 14px 40px rgba(60,43,30,.1)}
+.landing{background:radial-gradient(ellipse at 20% 0%,#e7ddd1,transparent 55%),#f2efea}
+.login-topline{align-items:flex-start;gap:12px;margin-bottom:25px}
+.login-topline .eyebrow{font-size:10px;line-height:1.5;color:#a3896c;letter-spacing:2px;max-width:255px}
+.brand-lockup{margin:25px 0;gap:15px}
+.brand-lockup h1{font-size:30px;letter-spacing:-.04em;color:#15232d}
+.login-card p{font-size:13px;line-height:1.55}
+.login-actions{gap:10px;margin:10px 0 20px}
+.login-actions>.button{min-height:38px}
+.login-card>small{font-size:11px;color:#9b8b7d}
+.hh-module-button{background:#fff;color:#463b31;min-height:38px;border:1px solid #d7cabe;font-weight:700;box-shadow:0 1px 1px rgba(0,0,0,.02);white-space:nowrap}
+.hh-module-button:hover:not(:disabled){background:#f1e9df}
+.hh-module-button span[aria-hidden]{margin-left:4px}
+.hh-module-loading{display:none;min-height:100vh;place-items:center;padding:24px;background:radial-gradient(ellipse at 20% 0%,#e7ddd1,transparent 55%),#f2efea}
+html[data-module-sso="pending"] .landing{display:none}
+html[data-module-sso="pending"] .hh-module-loading{display:grid}
+.hh-module-loading-card{text-align:center;background:#fff;border:1px solid #e4ded5;border-radius:18px;box-shadow:0 14px 40px rgba(60,43,30,.1);width:min(420px,100%);padding:35px 28px}
+.hh-module-loading-card>.hh-logo{height:66px;width:50px;margin:0 auto 18px}
+.hh-module-loading-title{font-size:19px;font-weight:800;color:#15232d}
+.hh-module-loading-card p{font-size:12px;color:#73675c;line-height:1.5;margin:14px 0 0}
+.hh-module-loading-spinner{margin:22px auto 0;width:28px;height:28px;border:3px solid #e8ddd1;border-top-color:#7a5a3a;border-radius:50%;animation:hh-sso-spin .8s linear infinite}
+@keyframes hh-sso-spin{to{transform:rotate(360deg)}}
+@media(max-width:630px){.login-card{padding:25px}.login-topline{margin-bottom:18px}.brand-lockup h1{font-size:23px}}
+
+
+/* Live Warehouse presence appears before the module button, not a Production badge. */
+.hh-module-controls{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(48vw,540px)}
+.hh-module-controls>.hh-module-button{flex:0 0 auto}
+.hh-module-controls>.other-active-users{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;min-width:0;max-width:320px;overflow-x:auto;scrollbar-width:thin}
+.hh-module-controls>.other-active-users.hidden{display:none}
+.online-peer{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;max-width:165px;overflow:hidden;text-overflow:ellipsis;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:650;line-height:1.1;color:#604733;background:#f1e9e0;border:1px solid #ddcebf;flex:0 0 auto}
+.online-peer::before{content:"";background:#28856a;border-radius:50%;width:6px;height:6px;flex:0 0 6px}
+.online-peer-count{font-weight:800}
+@media(max-width:1090px){
+ .topbar{flex-wrap:wrap}
+ .top-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}
+ .hh-module-controls{margin-right:auto;max-width:none}
+}
+@media(max-width:620px){
+ .topbar{align-items:stretch;flex-wrap:wrap}
+ .top-brand{flex:1 1 100%}
+ .top-actions{width:100%;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+ .hh-module-controls{flex:1 0 100%;width:100%;display:flex;justify-content:flex-end;gap:7px}
+ .hh-module-controls>.other-active-users{min-width:0;max-width:none;flex:1 1 auto;overflow:hidden}
+ .hh-module-controls>.other-active-users>.online-peer{max-width:min(30vw,118px)}
+ .hh-module-controls>.hh-module-button{max-width:57%;font-size:12px;padding:7px 10px}
+ .top-actions>.identity{margin-left:auto;max-width:130px;font-size:11px}
+ .top-actions>.language-control{flex:0 0 auto}
+ .top-actions>#logout{flex:0 0 auto}
+}
+
+/* HH unified account action, modal and semver footer */
+.top-actions>.hh-account-button{max-width:235px;min-height:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.hh-signout-modal{width:min(420px,calc(100vw - 32px))}
+.hh-signout-modal .modal-body{padding:12px 24px 20px;color:#6b6258;line-height:1.5;font-size:13px}
+.hh-signout-modal .modal-footer{padding-top:16px}
+.hh-copyright{text-align:center;color:#9c8e80;font-size:11px;letter-spacing:.03em;padding:18px 12px 24px}
+.hh-copyright [data-hh-version]{font-variant-numeric:tabular-nums;font-weight:700;color:#80654d}
+@media(max-width:620px){.top-actions>.hh-account-button{margin-left:auto;max-width:48%;min-width:0;font-size:11px;padding:7px 10px}}
+
+/* Admin-only Render Billing meter shared by Project and Warehouse Registers. */
+.hh-render-usage{display:flex;align-items:center;gap:18px;padding:15px 18px;
+  margin:0 0 16px;background:#fffaf5;border:1px solid #e3d5c8;border-radius:13px;
+  box-shadow:0 3px 12px rgba(60,43,30,.04);font-size:12px;min-width:0;flex-wrap:wrap}
+.hh-render-usage.hidden{display:none!important}
+.hh-render-usage-details{min-width:220px;flex:1 1 235px}
+.hh-render-usage-heading{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:#3b3028}
+.hh-render-usage-heading strong{font-weight:800;font-size:13px}
+.hh-render-usage-manual{font-size:10px;color:#87694e;background:#f1e6db;padding:3px 7px;border-radius:99px}
+.hh-render-usage-total{font-size:24px;letter-spacing:-.035em;font-weight:800;color:#322920;line-height:1.55;font-variant-numeric:tabular-nums}
+.hh-render-usage-meta{font-size:11px;color:#816e5c;display:block}
+.hh-render-usage-form{display:flex;align-items:end;gap:8px;flex:0 0 auto}
+.hh-render-usage-form label{display:grid;gap:5px;font-size:11px;color:#5d5147;font-weight:700}
+.hh-render-usage-form input{max-width:116px;min-height:38px;padding:7px 10px;
+ background:white;color:#302820;border-radius:9px;border:1px solid #d8cabe;font-size:13px}
+.hh-render-usage-save{border:1px solid #816245;background:#7a5a3a;color:white;min-height:38px;
+ padding:0 12px;border-radius:9px;font-weight:700;cursor:pointer}
+.hh-render-usage-save:disabled{opacity:.5;cursor:wait}
+.hh-render-usage-help{flex:1 1 245px;display:grid;gap:3px;line-height:1.4;min-width:0}
+.hh-render-usage-help a{font-size:12px;font-weight:700;color:#76522f}
+.hh-render-usage-help small{font-size:11px;color:#847365}
+@media(max-width:680px){.hh-render-usage{padding:14px;gap:11px}
+ .hh-render-usage-details,.hh-render-usage-form,.hh-render-usage-help{flex:1 1 100%}
+ .hh-render-usage-form input{max-width:150px}
+}

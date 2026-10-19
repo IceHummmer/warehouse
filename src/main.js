@@ -1,9 +1,22 @@
 import './style.css';
+import {createRenderUsageWidget} from './render-usage-widget.js';
+import releaseInfo from '../version.json';
 import {t as tx, getLanguage, setLanguage, localizeError} from './i18n.js';
 import {PublicClientApplication} from '@azure/msal-browser';
 const $=(sel,root=document)=>root.querySelector(sel);
 const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const cfg=window.warehouseConfig||{};
+const PROJECT_REGISTER_URL='https://project-register.helsinginhitsaus.fi/';
+const WAREHOUSE_REGISTER_URL='https://hh-warehouse.onrender.com/';
+const incomingFromProjects=new URL(location.href).searchParams.get('from_module')==='projects';
+const autoModuleSso=incomingFromProjects&&new URL(location.href).searchParams.get('auto_sso')==='1';
+const showWarehouseDenied=()=>{
+ document.documentElement.removeAttribute('data-module-sso');
+ $('#warehouseModuleDenied').classList.remove('hidden');
+ $('#landing').classList.remove('hidden');
+ $('#shell').classList.add('hidden');
+ setLoginStatus('');
+};
 // The language belongs to the viewer, never to warehouse records.
 // Save and restore any open form values while translating its chrome.
 function setLoginStatus(message){
@@ -28,14 +41,12 @@ function chooseLanguage(language){
  const snapshot=form?{
   type:form.dataset.type,
   record:form.dataset.record,
-  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name).map(el=>[el.name,el.value]))
+  values:Object.fromEntries(Array.from(form.elements).filter(el=>el.name&&el.name!=='roles').map(el=>[el.name,el.value])),
+  roleSelections:Array.from(form.querySelectorAll('input[name="roles"]:checked')).map(el=>el.value)
  }:null;
  setLanguage(language);
  refreshStaticLanguage();
- if(state.user){
-  $('#mode-label').textContent=tx(state.demo?'DEMO':cfg.testPinMode?'EXCEL TEST':'LIVE TEST');
-  render();
- }
+ if(state.user)render();
  if(snapshot){
   modal(snapshot.type,snapshot.record);
   const fresh=$('#record-form');
@@ -51,6 +62,9 @@ function chooseLanguage(language){
     if(name==='category'||name==='contractor')continue;
     const field=fresh.elements.namedItem(name);
     if(field)field.value=value;
+   }
+   for(const checkbox of fresh.querySelectorAll('input[name="roles"]')){
+    checkbox.checked=snapshot.roleSelections.includes(checkbox.value);
    }
   }
  }
@@ -70,7 +84,12 @@ const pages={
  system:['System messages','Administrative messages and operational warnings.']
 };
 const icons={inventory:'▦',receipts:'↓',issues:'↑',rentals:'⟳'};
-const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
+const state={view:'dashboard',demo:false,user:null,token:null,client:null,account:null,data:{},search:'',sort:'sku',descending:false,zoom:100,drag:null,page:1,adminSession:false,microsoftSession:false,members:[],onlineUsers:[],bootstrapAdmins:[],report:{type:'inventory',projectId:'',from:'',to:'',rows:[],total:0,loaded:false,loading:false,error:'',source:''}};
+const renderUsageWidget=createRenderUsageWidget({
+ isAdmin:()=>Boolean(state.user?.role==='admin'&&!state.demo),
+ language:getLanguage,
+ request:(method,body)=>api('/api/admin/render-usage',body,method)
+});
 const today=()=>new Date().toISOString().slice(0,10);
 const money=x=>Number(x||0).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI',{style:'currency',currency:'EUR'});
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -122,9 +141,44 @@ function fakeData(){
  return {items,projects,employees,rentals:rents,movements:[],history:[],periods:[],messages:[]};
 }
 async function initMicrosoft(){
+ const incomingTicket=new URLSearchParams(location.hash.slice(1)).get('hh_admin_transfer');
+ if(incomingTicket){
+  history.replaceState({},document.title,location.pathname+location.search);
+  document.documentElement.dataset.moduleSso='pending';
+  try{
+   const response=await fetch(new URL('/api/auth/admin-handoff/exchange',cfg.apiUrl),{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:incomingTicket})
+   });
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||!data.token)throw new Error(data.error||'Administrator transfer was rejected');
+   state.adminSession=true;state.microsoftSession=false;state.token=data.token;
+   sessionStorage.setItem('hhWarehouseAdminToken',data.token);
+   await connect();return;
+  }catch(error){
+   state.adminSession=false;state.token=null;sessionStorage.removeItem('hhWarehouseAdminToken');
+   document.documentElement.removeAttribute('data-module-sso');
+   setLoginStatus('Administrator transfer failed. Sign in as administrator: '+error.message);
+   return;
+  }
+ }
+ // Official release remains read-only/inaccessible until all cutover checks pass.
+ // This is only a UI maintenance state; production API separately enforces auth.
+ if(cfg.productionMode&&!cfg.launchReady){
+  $('#test-pin').closest('label').classList.add('hidden');
+  $('#login-microsoft').disabled=true;
+  $('#login-microsoft').classList.add('hidden');
+  document.documentElement.removeAttribute('data-module-sso');
+  $('#login-corporate').classList.add('hidden');
+  $('#admin-login-toggle').classList.add('hidden');
+  $('#admin-login-form').classList.add('hidden');
+  setLoginStatus('The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.');
+  return;
+ }
  if(!cfg.testPinMode){
   $('#test-pin').closest('label').classList.add('hidden');
   const loginButton=$('#login-microsoft');
+  loginButton.disabled=false;
+  loginButton.classList.remove('hidden');
   loginButton.dataset.i18n='Sign in with Microsoft 365';
   loginButton.textContent=tx('Sign in with Microsoft 365');
   const saved=cfg.adminLoginEnabled?sessionStorage.getItem('hhWarehouseAdminToken'):null;
@@ -140,9 +194,31 @@ async function initMicrosoft(){
   if(cfg.tenantId&&cfg.clientId&&cfg.apiScope){
    state.client=new PublicClientApplication({auth:{clientId:cfg.clientId,authority:'https://login.microsoftonline.com/'+cfg.tenantId,redirectUri:location.origin+'/'},cache:{cacheLocation:'sessionStorage'}});
    await state.client.initialize();
+   let redirectResult=null;
+   try{redirectResult=await state.client.handleRedirectPromise();}
+   catch(error){
+    // Silently reusing Microsoft from the other registry can need consent
+    // or explicit interaction. Never loop on prompt=none failures.
+    document.documentElement.removeAttribute('data-module-sso');
+    setLoginStatus(error.message||'Microsoft sign-in failed');
+    // An SSO interaction error is not a permissions denial; manual sign-in remains available.
+    return;
+   }
+   if(redirectResult?.account){
+    state.account=redirectResult.account;state.microsoftSession=true;
+    try{await connect();return;}
+    catch(error){
+     state.microsoftSession=false;
+     document.documentElement.removeAttribute('data-module-sso');
+     setLoginStatus(error.message);
+     if(error.status===403)showWarehouseDenied();
+     return;
+    }
+   }
    if(cfg.testPinMode)$('#login-corporate').classList.remove('hidden');
   }else if(!cfg.testPinMode){
-   setLoginStatus('Microsoft login is not configured for this test. Explore the interactive demo.');
+   document.documentElement.removeAttribute('data-module-sso');
+   setLoginStatus('Microsoft login is not configured for this application.');
    $('#login-microsoft').disabled=true;
    return;
   }
@@ -154,29 +230,89 @@ async function initMicrosoft(){
    $('#test-pin').focus();return;
  }
  const accounts=state.client.getAllAccounts();
- if(accounts.length){state.account=accounts[0];state.microsoftSession=true;try{await connect();}catch(e){state.microsoftSession=false;setLoginStatus(e.message);}}
+ if(accounts.length){
+  state.account=accounts[0];state.microsoftSession=true;
+  try{await connect();return;}
+  catch(error){
+   state.microsoftSession=false;document.documentElement.removeAttribute('data-module-sso');
+   setLoginStatus(error.message);if(error.status===403){showWarehouseDenied();return;}
+  }
+ }
+ if(autoModuleSso&&!state.adminSession){
+  // MSAL obtains its own Warehouse-scoped token via Microsoft SSO.
+  // No Project Register cookies or tokens are shared with Warehouse.
+  history.replaceState({},document.title,location.pathname);
+  try{await state.client.loginRedirect({scopes:[cfg.apiScope],prompt:'none'});}
+  catch(error){document.documentElement.removeAttribute('data-module-sso');setLoginStatus(error.message||'Microsoft sign-in failed');}
+ }
 }
 async function connect(){
- if(state.microsoftSession){const result=await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account});state.token=result.accessToken;}
+ // The authenticated API helper acquires the token; do not repeat the same
+ // token acquisition before the large inventory bootstrap.
  const data=await api('/api/bootstrap');
- if(data.user.role==='admin'){
-   try{data.messages=(await api('/api/system-messages')).messages;}catch{data.messages=[];}
- }
+ const isAdmin=data.user.role==='admin';
+ if(isAdmin)data.messages=[];
  state.user=data.user;state.data=data;state.demo=false;
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx(cfg.testPinMode?'EXCEL TEST':'LIVE TEST');$('#mode-label').className='tag live';$('#identity').textContent=state.user.email;$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
+ document.documentElement.removeAttribute('data-module-sso');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');
+ void fetch('https://api.project-register.helsinginhitsaus.fi/api/health',{mode:'no-cors',cache:'no-store'}).catch(()=>{});
+ $('#warehouseAccountButton').textContent=state.adminSession?'admin':state.user.email;$('#warehouseAccountButton').title=tx('Account options');$('#demo-warning').classList.toggle('hidden',!cfg.testPinMode);
  render();
+ if(isAdmin)void renderUsageWidget.load();
+ // Don't hold the entire dashboard behind the second GitHub request
+ // needed to fetch administrator system messages.
+ if(isAdmin)void api('/api/system-messages').then(result=>{
+  if(state.user===data.user && !state.demo){state.data.messages=result.messages||[];render();}
+ }).catch(()=>{});
+ void refreshWarehousePresence();
 }
 async function api(path,body,method='GET'){
  const token=state.microsoftSession?(await state.client.acquireTokenSilent({scopes:[cfg.apiScope],account:state.account})).accessToken:state.token;
  const response=await fetch(String(cfg.apiUrl||'http://localhost:8787').replace(/\/$/,'')+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'Idempotency-Key':crypto.randomUUID()}:{})},body:body?JSON.stringify(body):undefined});
  const data=await response.json().catch(()=>({}));
- if(!response.ok)throw new Error(data.error||'Operation failed');
+ if(!response.ok){const error=new Error(data.error||'Operation failed');error.status=response.status;throw error;}
  return data;
+}
+function renderWarehousePresence(){
+ const el=$('#warehouseOnlineUsers');
+ if(!el)return;
+ const online=state.user&&!state.demo?state.onlineUsers:[];
+ el.classList.toggle('hidden',!online.length);
+ el.replaceChildren();
+ el.title=online.join(', ');
+ const compact=window.matchMedia('(max-width: 620px)').matches;
+ for(const name of (compact?online.slice(0,1):online)){
+  const badge=document.createElement('span');
+  badge.className='online-peer';
+  badge.textContent=name;
+  badge.title=name;
+  el.append(badge);
+ }
+ if(compact&&online.length>1){
+  const more=document.createElement('span');
+  more.className='online-peer online-peer-count';
+  more.textContent='+'+(online.length-1);
+  more.title=online.slice(1).join(', ');
+  el.append(more);
+ }
+}
+let warehousePresenceBusy=false;
+async function refreshWarehousePresence(){
+ if(!state.user||state.demo||warehousePresenceBusy||document.visibilityState==='hidden')return;
+ warehousePresenceBusy=true;
+ try{
+  const response=await api('/api/presence',null,'POST');
+  if(state.user){
+   state.onlineUsers=[...new Set((response.others||[]).filter(x=>typeof x==='string'&&x.trim()))];
+   renderWarehousePresence();
+  }
+ }catch(error){console.warn('Warehouse presence unavailable:',error.message);}
+ finally{warehousePresenceBusy=false;}
 }
 async function reload(){if(!state.demo){state.data=await api('/api/bootstrap');if(state.user?.role==='admin'){try{state.data.messages=(await api('/api/system-messages')).messages;}catch{state.data.messages=[];}}if(state.view==='users')await loadMembers();}render();}
 function beginDemo(){
  state.demo=true;state.user={email:'Demo administrator',role:'admin'};state.data=fakeData();
- $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#mode-label').textContent=tx('DEMO');$('#mode-label').className='tag';$('#identity').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
+ $('#landing').classList.add('hidden');$('#shell').classList.remove('hidden');$('#warehouseAccountButton').textContent='Demo administrator';$('#demo-warning').classList.remove('hidden');
  render();
 }
 function cols(){
@@ -189,7 +325,7 @@ function cols(){
  issues:[['created_at','Date'],['sku','SKU'],['item_name','Item'],['quantity','Qty'],['project_name','Project'],['employee_name','Employee'],['actor','User']],
  rentals:[['sku','SKU'],['item_name','Equipment'],['project_name','Project'],['employee_name','Employee'],['quantity','Qty'],['started_on','Issued'],['rate','Rate'],['rate_unit','Per'],['status','Status'],['billed_amount','Billed'],['_actions','Actions']],
  projects:[['name','Project']],employees:[['contractor','Contractor'],['name','Employee']],
- users:[['email','Email'],['role','Role'],['disabled','Access status'],['_actions','Actions']],
+ users:[['name','User'],['email','Microsoft account'],['roles','Roles'],['disabled','Access status'],['_actions','Actions']],
  history:[['created_at','Date & time'],['actor','User'],['entity','Entity'],['entity_id','Record'],['field','Field'],['before_value','Before'],['after_value','After'],['detail','Details']],
  system:[['created_at','Date & time'],['severity','Type'],['subject','Subject'],['details','Details'],['_actions','Actions']]
  };
@@ -204,7 +340,7 @@ function rows(){
  case 'rentals':return d.rentals;
  case 'projects':return d.projects;
  case 'employees':return d.employees;
- case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,role:'admin',disabled:false,isBootstrap:true})),...state.members];
+ case 'users':return [...state.bootstrapAdmins.map(email=>({id:email,email,name:email.split('@')[0],role:'admin',roles:['admin'],disabled:false,isBootstrap:true})),...state.members.map(m=>({...m,name:m.name||m.email.split('@')[0]}))];
  case 'warehouse-history':return d.movements.filter(x=>x.historical);
  case 'history':return d.history;
  case 'system':return d.messages||[];
@@ -227,6 +363,7 @@ function actions(){
 function render(){
  if(!state.user)return;
  if(['system','users'].includes(state.view)&&state.user.role!=='admin')state.view='dashboard';
+ renderUsageWidget.render();
  const d=state.data;
  $('#view-title').textContent=tx(pages[state.view][0]);$('#view-description').textContent=tx(pages[state.view][1]);
  $$('#tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.view===state.view));
@@ -356,6 +493,7 @@ function cell(x,key){
  if(key==='status'||key==='kind')return '<span class="pill '+esc(String(value).toLowerCase())+'">'+esc(tx(value==='low'?'low':value==='ok'?'ok':value))+'</span>';
  if(key==='rental_rate'||key==='rate'||key==='billed_amount'||key==='unit_cost'||key==='original_total_cost')return money(value);
  if(key==='created_at')return value?new Date(value).toLocaleString(getLanguage()==='ru'?'ru-RU':'en-FI'):'';
+ if(key==='roles')return esc((Array.isArray(value)&&value.length?value:[x.role]).map(role=>tx(role)).join(' · '));
  if(key==='rate_unit'||key==='severity'||key==='entity'||key==='field'||key==='role')return esc(tx(value));
  if(key==='disabled')return esc(tx(value?'Disabled':'Active'));
  if(key==='started_on'||key==='issued_on'||key==='returned_on')return esc(fullDate(value));
@@ -366,7 +504,7 @@ const selectField=(name,label,values,selected)=>'<label class="field"><span>'+es
 const itemOptions=(kind)=>state.data.items.filter(x=>!kind||x.kind===kind).map(x=>({id:x.id,label:x.sku+' · '+x.name+' ('+tx('Available')+': '+(x.total_qty-x.rented_qty)+')'}));
 function modal(type,value=''){
  let title='',content='',note='',record=null;
- const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',disabled:false}:null);
+ const item=state.data.items.find(x=>x.id===value),rental=state.data.rentals.find(x=>x.id===value),member=state.members.find(x=>x.email===value)||(state.bootstrapAdmins.includes(value)?{email:value,role:'admin',roles:['admin'],disabled:false}:null);
  const projectOpt=state.data.projects.map(x=>({id:x.id,label:x.name}));
  if(type==='item'||type==='edit'){
   title=type==='edit'?'Edit item':'Create inventory item';record=type==='edit'?item:null;
@@ -388,8 +526,13 @@ function modal(type,value=''){
  if(type==='employee'){title='Add employee';content=field('contractor','Contractor','text','')+field('name','Employee name');}
  if(type==='member'||type==='member-edit'){
   title=type==='member'?'Add warehouse user':'Edit warehouse user';
-  content=field('email','Account email','email',member?.email||'',type==='member-edit'?'readonly':'')+
-    selectField('role','User role',[{id:'viewer',label:tx('viewer')},{id:'operator',label:tx('operator')},{id:'admin',label:tx('admin')}],member?.role||'viewer')+
+  content=field('name','User','text',member?.name||member?.email?.split('@')[0]||'','required maxlength="120"')+
+    field('email','Microsoft account','email',member?.email||'',type==='member-edit'?'readonly':'')+
+    '<fieldset class="role-checklist"><legend>'+esc(tx('User roles'))+'</legend>'+
+    [{id:'viewer',label:'viewer'},{id:'operator',label:'operator'},{id:'admin',label:'admin'}].map(option=>
+     '<label class="role-choice"><input type="checkbox" name="roles" value="'+option.id+'" '+
+     ((member?.roles||[member?.role||'viewer']).includes(option.id)?'checked':'')+
+     '><span>'+esc(tx(option.label))+'</span></label>').join('')+'</fieldset>'+
     (type==='member-edit'?selectField('disabled','Account status',[{id:'false',label:tx('Enabled')},{id:'true',label:tx('Disabled (no access)')}],String(member?.disabled||false)):'');
   note=tx('Only approved Microsoft Entra accounts can access this production system.');
  }
@@ -515,7 +658,12 @@ function demoMutation(type,b,value){
 function nextDate(s){const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
 async function save(event){
  event.preventDefault();const form=event.currentTarget,type=form.dataset.type,value=form.dataset.record;
- const b=Object.fromEntries(new FormData(form).entries());
+ const formData=new FormData(form);const b=Object.fromEntries(formData.entries());
+ if(type==='member'||type==='member-edit'){
+  b.roles=formData.getAll('roles');
+  if(!b.roles.length){toast('Select at least one role.',true);return;}
+  delete b.role;
+ }
  try{
   if(type==='rent'||type==='issue'){
    const employee=state.data.employees.find(x=>x.id===b.employee_id);
@@ -555,11 +703,28 @@ document.addEventListener('click',async e=>{
  }
  if(['item','edit','receipt','issue','rent','close','monthly','adjust','project','employee','member','member-edit'].includes(t))modal(t,v);
 });
+$('#warehouseModuleButton').addEventListener('click',async()=>{
+ const button=$('#warehouseModuleButton');
+ if(state.adminSession){
+  button.disabled=true;
+  try{
+   const result=await api('/api/auth/admin-handoff/issue',{},'POST');
+   if(!result.ticket)throw new Error('Missing administrator transfer proof');
+   window.location.assign(PROJECT_REGISTER_URL+'#hh_admin_transfer='+encodeURIComponent(result.ticket));
+  }catch(error){toast('Administrator transfer unavailable: '+error.message,true);}
+  finally{button.disabled=false;}
+  return;
+ }
+ window.location.assign(PROJECT_REGISTER_URL+'?from_module=warehouse&auto_sso=1');
+});
+$('#warehouseModuleReturn').addEventListener('click',()=>window.location.assign(PROJECT_REGISTER_URL));
 $('#login-demo').addEventListener('click',beginDemo);
  for(const languageSelect of ['#language-select','#login-language-select']){
   $(languageSelect)?.addEventListener('change',event=>chooseLanguage(event.target.value));
  }
  refreshStaticLanguage();
+const hhVersion=document.querySelector('[data-hh-version]');
+if(hhVersion)hhVersion.textContent='v'+releaseInfo.version;
 $('#admin-login-toggle').addEventListener('click',()=>{
  const form=$('#admin-login-form'),show=form.classList.contains('hidden');
  form.classList.toggle('hidden',!show);
@@ -612,6 +777,7 @@ $('#login-corporate').addEventListener('click',async()=>{
  }catch(error){
   state.microsoftSession=false;state.token=null;
   setLoginStatus(error.message||'Microsoft sign-in failed');
+  if(error.status===403)showWarehouseDenied();
   $('#login-status').setAttribute('role','alert');
  }finally{
   btn.disabled=false;btn.textContent=tx('Sign in with Microsoft 365');
@@ -657,29 +823,45 @@ $('#login-microsoft').addEventListener('click',async()=>{
       ?'Cannot reach the test API. Please retry, or report this connection error.'
       :e.message;
   setLoginStatus(message);
+  if(e.status===403)showWarehouseDenied();
   status.setAttribute('role','alert');
  }finally{
   button.disabled=false;button.textContent=tx(cfg.testPinMode?'Open test warehouse':'Sign in with Microsoft 365');
  }
 });
 $('#test-pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#login-microsoft').click();});
-$('#logout').addEventListener('click',async()=>{
+async function logoutWarehouse(){
  if(state.microsoftSession){
-  if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
-  location.reload();return;
+  try{await state.client.logoutRedirect({account:state.account,onRedirectNavigate:()=>false});}
+  catch(error){console.warn('Local Microsoft cache logout:',error.message);}
+  state.microsoftSession=false;state.token=null;state.account=null;
+  location.replace(location.pathname);return;
  }
- if(cfg.testPinMode){
-  try{await api('/api/auth/logout',{},'POST');}catch{}
-  sessionStorage.removeItem('hhWarehouseTestToken');location.reload();return;
- }
- if(state.adminSession){
+ if(state.adminSession||cfg.testPinMode){
   try{await api('/api/auth/logout',{},'POST');}catch{}
   sessionStorage.removeItem('hhWarehouseAdminToken');
-  location.reload();return;
+  sessionStorage.removeItem('hhWarehouseTestToken');
+  location.replace(location.pathname);return;
  }
- if(state.client&&state.account)await state.client.logoutPopup({account:state.account}).catch(()=>{});
- location.reload();
+ location.replace(location.pathname);
+}
+function closeWarehouseSignOut(){
+ $('#warehouseSignOutDialog').classList.add('hidden');
+}
+$('#warehouseAccountButton').addEventListener('click',()=>{
+ $('#warehouseSignOutDialog').classList.remove('hidden');
 });
+$('#warehouseSignOutClose').addEventListener('click',closeWarehouseSignOut);
+$('#warehouseSignOutCancel').addEventListener('click',closeWarehouseSignOut);
+$('#warehouseSignOutConfirm').addEventListener('click',async()=>{
+ const button=$('#warehouseSignOutConfirm');
+ button.disabled=true;
+ try{await logoutWarehouse();}finally{button.disabled=false;closeWarehouseSignOut();}
+});
+$('#warehouseSignOutDialog').addEventListener('click',event=>{
+ if(event.target.id==='warehouseSignOutDialog')closeWarehouseSignOut();
+});
+
 $('#search').addEventListener('input',e=>{state.search=e.target.value;state.page=1;render();});
 $('#page-content').addEventListener('change',event=>{
  if(event.target.id==='report-type'){
@@ -708,4 +890,7 @@ $('#page-content').addEventListener('pointerdown',e=>{
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
 });
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-initMicrosoft().catch(e=>{setLoginStatus('Microsoft sign-in not ready: '+e.message);});
+window.setInterval(()=>{void refreshWarehousePresence();},30000);
+window.addEventListener('resize',renderWarehousePresence);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void refreshWarehousePresence();});
+initMicrosoft().catch(e=>{document.documentElement.removeAttribute('data-module-sso');setLoginStatus('Microsoft sign-in not ready: '+e.message);});

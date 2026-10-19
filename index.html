@@ -4,21 +4,28 @@
  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
  <meta name="theme-color" content="#785d42"/>
  <meta name="application-name" content="HH Warehouse Register"/>
- <link rel="manifest" href="/manifest.webmanifest"/>
- <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+ <link rel="manifest" href="/manifest.webmanifest?v=hh-ios-3"/>
+ <link rel="icon" href="/favicon.svg?v=hh-ios-3" type="image/svg+xml"/>
+ <link rel="apple-touch-icon" href="/pwa/hh-ios-180.png?v=3" sizes="180x180"/>
  <title>HH Warehouse Register</title>
  <script src="/config.js"></script>
+ <script>if(new URLSearchParams(location.search).has('auto_sso')||(new URLSearchParams(location.hash.slice(1)).has('code')||new URLSearchParams(location.hash.slice(1)).has('hh_admin_transfer')))document.documentElement.dataset.moduleSso='pending';</script>
 </head>
 <body>
  <section id="landing" class="landing">
   <div class="login-card">
    <div class="login-topline"><div class="eyebrow" data-i18n="HELSINGIN HITSAUS · WAREHOUSE CONTROL">HELSINGIN HITSAUS · WAREHOUSE CONTROL</div><label class="language-control" for="login-language-select"><span data-i18n="Language">Language</span><select id="login-language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label></div>
-   <div class="brand-lockup"><span class="logo-mark">H</span><h1>Warehouse Register</h1></div>
+   <div class="brand-lockup"><img class="hh-logo login-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><h1>Warehouse Register</h1></div>
    <p data-i18n="Inventory, materials, tools, project assignments and rentals in one workspace.">Inventory, materials, tools, project assignments and rentals in one workspace.</p>
-   <div id="login-status" class="muted" data-i18n="Enter the warehouse test access code to view the imported Excel data.">Enter the warehouse test access code to view the imported Excel data.</div>
+   <div id="login-status" class="muted" data-i18n="The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.">The official Warehouse Register is being prepared. Activation is pending secure storage, backups and access checks.</div>
+   <div id="warehouseModuleDenied" class="module-access-denied hidden" role="alert">
+     <strong data-i18n="No access to Warehouse Register">No access to Warehouse Register</strong>
+     <p data-i18n="Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.">Your Microsoft account is signed in, but you do not have permission to use Warehouse Register.</p>
+     <button id="warehouseModuleReturn" type="button" class="button outline" data-i18n="Back to Project Register">← Back to Project Register</button>
+   </div>
    <div class="login-actions">
-    <label class="field"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
-    <button class="button primary" id="login-microsoft" data-i18n="Open test warehouse">Open test warehouse</button>
+    <label class="field hidden"><span data-i18n="Test access code">Test access code</span><input id="test-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="64" placeholder="Enter access code" data-i18n-placeholder="Enter access code" /></label>
+    <button class="button primary hidden" id="login-microsoft" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
     <button class="button outline hidden" id="login-corporate" type="button" data-i18n="Sign in with Microsoft 365">Sign in with Microsoft 365</button>
     <button class="button outline hidden" id="admin-login-toggle" type="button" data-i18n="Administrator login">Administrator login</button>
     <form id="admin-login-form" class="admin-login-form hidden" autocomplete="off">
@@ -29,13 +36,21 @@
     </form>
     <button class="button outline hidden" id="login-demo" disabled data-i18n="Demo disabled">Demo disabled</button>
    </div>
-   <small class="muted" data-i18n="This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.">This test environment contains historical warehouse records. Test edits may reset after server restart. Do not use it for actual inventory operations.</small>
+   <small class="muted">Helsingin Hitsaus</small>
   </div>
  </section>
+ <div id="moduleLoading" class="hh-module-loading" role="status" aria-live="polite">
+   <div class="hh-module-loading-card">
+     <img class="hh-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus"/>
+     <div class="hh-module-loading-title" data-i18n="Connecting to Warehouse Register…">Connecting to Warehouse Register…</div>
+     <div class="hh-module-loading-spinner" aria-hidden="true"></div>
+     <p data-i18n="Checking Microsoft 365 access and loading inventory.">Checking Microsoft 365 access and loading inventory.</p>
+   </div>
+ </div>
  <div id="shell" class="shell hidden">
   <header class="topbar">
-   <div class="top-brand"><span class="logo-mark small">H</span><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
-   <div class="top-actions"><span id="mode-label" class="tag">DEMO</span><span id="identity" class="identity"></span><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline compact" id="logout" data-i18n="Sign out">Sign out</button></div>
+   <div class="top-brand"><img class="hh-logo header-logo" src="/hh-logo.svg" alt="Helsingin Hitsaus" /><div><div class="eyebrow">HELSINGIN HITSAUS</div><strong>Warehouse Register</strong></div></div>
+   <div class="top-actions"><div class="hh-module-controls"><div id="warehouseOnlineUsers" class="other-active-users hidden" aria-label="Other users currently online" aria-live="polite"></div><button id="warehouseModuleButton" type="button" class="button outline hh-module-button"><span data-i18n="Project Register">Project Register</span> <span aria-hidden="true">→</span></button></div><label class="language-control" for="language-select"><span data-i18n="Language">Language</span><select id="language-select" aria-label="Language"><option value="en">EN</option><option value="ru">RU</option></select></label><button class="button outline hh-account-button" id="warehouseAccountButton" type="button" aria-label="Account options">Account</button></div>
   </header>
   <main>
    <section class="overview">
@@ -43,6 +58,19 @@
     <div id="summary" class="stats"></div>
    </section>
    <div id="demo-warning" class="demo-warning hidden"><strong data-i18n="TEST COPY:">TEST COPY:</strong> <span data-i18n="real Excel records are loaded. New edits in this preview are temporary and may reset after a server restart. Do not treat the preview as the official stock register.">real Excel records are loaded. New edits in this preview are temporary and may reset after a server restart. Do not treat the preview as the official stock register.</span></div>
+      <section id="hhRenderUsagePanel" class="hh-render-usage hidden" aria-label="Render Free instance hours">
+    <div class="hh-render-usage-details">
+      <div class="hh-render-usage-heading"><strong data-render-text="Render Free hours">Render Free hours</strong>
+        <span class="hh-render-usage-manual" data-render-text="Estimate">Estimate</span></div>
+      <div id="hhRenderUsageSummary" class="hh-render-usage-total">— / 750 h</div>
+      <small id="hhRenderUsageUpdated" class="hh-render-usage-meta">—</small>
+    </div>
+    <div class="hh-render-usage-help">
+      <a href="https://dashboard.render.com/w/tea-daq04b3ncjis73ftn7dg/billing#included-usage" target="_blank" rel="noopener noreferrer" data-render-text="Render Billing ↗">Render Billing ↗</a>
+      <small data-render-text="All free web services in this workspace. Estimated from runtime metrics; may differ from Billing. Updates automatically while this page is open.">All free web services in this workspace. Estimated from runtime metrics; may differ from Billing. Updates automatically while this page is open.</small>
+    </div>
+  </section>
+
    <nav id="tabs" class="tabs" aria-label="Warehouse sections" data-i18n-aria-label="Warehouse sections">
     <button data-view="dashboard" class="tab active" data-i18n="Dashboard">Dashboard</button>
     <button data-view="inventory" class="tab" data-i18n="Inventory">Inventory</button>
@@ -51,10 +79,10 @@
     <button data-view="rentals" class="tab" data-i18n="Rentals">Rentals</button>
     <button data-view="projects" class="tab" data-i18n="Projects">Projects</button>
     <button data-view="employees" class="tab" data-i18n="Employees">Employees</button>
-    <button data-view="users" class="tab admin-only" data-i18n="Users & Access">Users & Access</button>
     <button data-view="warehouse-history" class="tab" data-i18n="Warehouse History">Warehouse History</button>
     <button data-view="reports" class="tab" data-i18n="Reports">Reports</button>
     <button data-view="history" class="tab" data-i18n="Change History">Change History</button>
+    <button data-view="users" class="tab admin-only" data-i18n="Users & Access">Users & Access</button>
     <button data-view="system" class="tab admin-only"><span data-i18n="System messages">System messages</span> <span id="unread-count" class="count hidden">0</span></button>
    </nav>
    <section class="workspace">
@@ -72,9 +100,16 @@
     <div id="page-content" class="content"></div>
    </section>
   </main>
-  <footer data-i18n="HH Warehouse Register · Test Version 0.1 · All times displayed in local time">HH Warehouse Register · Test Version 0.1 · All times displayed in local time</footer>
+  <footer class="hh-copyright">© Helsingin Hitsaus <span aria-hidden="true">·</span> <span data-hh-version>v1.0.0</span></footer>
  </div>
- <div id="modal-host"></div><div id="toast" class="toast hidden" role="status"></div>
+ <div id="modal-host"></div>
+ <div id="warehouseSignOutDialog" class="modal-screen hidden" role="presentation">
+  <section class="modal hh-signout-modal" role="dialog" aria-modal="true" aria-labelledby="warehouseSignOutTitle">
+   <div class="modal-head"><h3 id="warehouseSignOutTitle" data-i18n="Sign out?">Sign out?</h3><button type="button" class="icon-button" id="warehouseSignOutClose" aria-label="Close">×</button></div>
+   <div class="modal-body"><p data-i18n="Do you want to sign out of Warehouse Register?">Do you want to sign out of Warehouse Register?</p></div>
+   <div class="modal-footer"><button type="button" class="button" id="warehouseSignOutCancel" data-i18n="Cancel">Cancel</button><button type="button" class="button primary" id="warehouseSignOutConfirm" data-i18n="Sign out">Sign out</button></div>
+  </section>
+ </div><div id="toast" class="toast hidden" role="status"></div>
  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
